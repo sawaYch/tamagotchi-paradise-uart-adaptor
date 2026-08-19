@@ -218,14 +218,9 @@ module board_preview() {
                     translate([board_x0, board_y0, 0])
                         cube([pcb_l, pcb_w, pcb_thickness]);
 
-                // USB-C connector block (simple visual block, aligned to the left edge)
-                color([0.75, 0.75, 0.78, 0.85])
-                    translate([
-                        board_x0,
-                        -usb_shell_w / 2,
-                        pcb_thickness
-                    ])
-                        cube([usb_shell_l, usb_shell_w, usb_shell_h]);
+                // USB-C receptacle (preview)
+                translate([board_x0 - usb_overhang, 0, pcb_thickness])
+                    usb_c_receptacle();
 
                 // Right header pins 1..6 (single column)
                 // Per your board description:
@@ -256,6 +251,64 @@ module board_preview() {
                     }
                 }
             }
+}
+
+module usb_c_receptacle() {
+    w = usb_shell_w;
+    h = usb_shell_h;
+    l = usb_shell_l;
+    metal_t = 0.32;
+    cavity_l = 5.5;
+    inner_w = w - 2 * metal_t;
+    inner_h = h - 2 * metal_t;
+    tongue_w = 6.55;
+    tongue_h = 0.72;
+    tongue_l = 4.3;
+    tab_l = 2.4;
+    tab_w = 0.85;
+    tab_h = 0.28;
+
+    color([0.76, 0.78, 0.81, 0.96])
+        difference() {
+            usb_c_capsule(l, w, h);
+            translate([-eps, 0, metal_t])
+                usb_c_capsule(cavity_l + eps, inner_w, inner_h);
+        }
+
+    color([0.10, 0.10, 0.11, 0.96]) {
+        translate([cavity_l - 0.35, 0, metal_t + 0.08])
+            usb_c_capsule(l - cavity_l + 0.35, inner_w - 0.2, inner_h - 0.16);
+        translate([0.28, 0, (h - tongue_h) / 2])
+            usb_c_capsule(tongue_l, tongue_w, tongue_h);
+    }
+
+    color([0.90, 0.70, 0.18, 0.96]) {
+        n = 8;
+        pad_w = 0.32;
+        pad_l = 2.3;
+        span = 5.5;
+        z0 = (h - tongue_h) / 2;
+        for (side = [0, 1])
+            for (i = [0 : n - 1]) {
+                py = -span / 2 + i * span / (n - 1);
+                translate([0.85, py, z0 + (side ? tongue_h : 0) - 0.03])
+                    cube([pad_l, pad_w, 0.06], center = true);
+            }
+    }
+
+    color([0.76, 0.78, 0.81, 0.96])
+        for (s = [-1, 1])
+            translate([l * 0.42, s * (w / 2 + tab_w / 2), tab_h / 2])
+                cube([tab_l, tab_w, tab_h], center = true);
+}
+
+module usb_c_capsule(l, w, h) {
+    r = h / 2;
+    hull()
+        for (s = [-1, 1])
+            translate([0, s * (w / 2 - r), r])
+                rotate([0, 90, 0])
+                    cylinder(h = l, r = r);
 }
 
 module hook() {
