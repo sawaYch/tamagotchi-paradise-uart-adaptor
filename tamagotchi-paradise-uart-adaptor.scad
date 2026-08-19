@@ -85,7 +85,7 @@ lid_slot_h = 1.8;      // groove height
 pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang;
 pcb_cav_w = pcb_w + 2 * tolerance;
 pcb_cav_h = pcb_h + tolerance + headroom;
-shell_h = wall + pcb_cav_h + retain_lip + lid_t;
+shell_h = wall + pcb_cav_h;
 
 usb_cut_w = usb_w + 2 * tolerance + 0.6;
 usb_cut_h = usb_h + 2 * tolerance;
@@ -127,6 +127,7 @@ module adapter() {
             hook();
             pcb_shell();
         }
+        pcb_cavity();
         usb_cutout();
         pin_through_holes();
     }
@@ -147,15 +148,8 @@ module pcb_cavity() {
         rounded_cube([
             shell_x1 - shell_x0 - 2 * wall,
             shell_y1 - shell_y0 - 2 * wall,
-            pcb_cav_h + retain_lip + 1
+            shell_h - wall + 1
         ], 0.6);
-
-    translate([shell_x0 + wall + pcb_insert_x_offset, shell_y1 - wall - retain_lip + pcb_insert_y_offset, hook_h + wall + pcb_cav_h - retain_lip])
-        cube([
-            shell_x1 - shell_x0 - 2 * wall,
-            shell_y1 - shell_y0 - 2 * wall + retain_lip + 1,
-            retain_lip + 1
-        ]);
 }
 
 // Rounded USB-C cutout with clearance (not an exact model).
