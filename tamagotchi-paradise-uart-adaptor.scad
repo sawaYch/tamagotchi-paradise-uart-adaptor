@@ -85,7 +85,7 @@ lid_slot_h = 1.8;      // groove height
 pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang;
 pcb_cav_w = pcb_w + 2 * tolerance;
 pcb_cav_h = pcb_h + tolerance + headroom;
-shell_h = wall + pcb_cav_h;
+shell_h = wall + pcb_cav_h + 2;
 
 usb_cut_w = usb_w + 2 * tolerance + 0.6;
 usb_cut_h = usb_h + 2 * tolerance;
@@ -158,7 +158,8 @@ usb_cut_tol = 0.8;      // extra clearance around the USB-C shape (mm)
 usb_cut_round_r = 2.5; // rounding radius for the cutout corners (mm)
 
 module usb_cutout() {
-    usb_z = hook_h + wall + pcb_thickness;
+    usb_z_offset = 2;
+    usb_z = hook_h + wall + pcb_thickness + usb_z_offset;
     
     // Dimensions in the face plane
     cut_w = usb_cut_w + 2 * usb_cut_tol; // Now along the Y direction (shorter width face)
@@ -170,7 +171,7 @@ module usb_cutout() {
     // Position logic shifted to short wall
     x0 = (shell_x0 - 0.2); // Align with the outer edge of the X-axis wall
     y0 = shell_y0 + (shell_y1 - shell_y0 - cut_w) / 2; // Center along the Y-axis
-    z0 = usb_z + 0.8;
+    z0 = usb_z;
     
     // Extrude through the X wall (Inward along X axis)
     translate([x0, y0 + cut_w / 2, z0])
