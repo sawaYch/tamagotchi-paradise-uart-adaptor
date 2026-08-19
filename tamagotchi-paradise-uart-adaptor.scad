@@ -6,10 +6,11 @@ eps = 0.05;
 
 tolerance = 0.2;
 show_board_preview = true;
-show_board_labels = false;
+show_pin_preview = true;
 
-// "adapter" | "lid" | "assembled"
-layout = "assembled";
+// 0 = adapter, 1 = lid, 2 = assembled
+// Use a number so `openscad -D part=0` works on Windows (no quoted strings).
+part = 2;
 
 // --- CP210X board ---
 pcb_l = 24.2;
@@ -28,17 +29,23 @@ pcb_insert_x_offset = 0;
 pcb_insert_y_offset = 0;
 
 // --- Hook ---
-stl_file = "Basic_rev2.stl";
+stl_file = "reference-stl/Basic_rev2.stl";
 hook_l = 35.0;
 hook_w = 14.0;
 hook_h = 6.35;
 hook_r = 2.0;
-clip_lip = 3.0;
 
+// A-SMT pogo (pin.png), installed plunger-down, flange on pocket floor
 pin_xs = [-12, 0, 12];
-pin_body_d = 3.0;
-pin_tip_d = 2.0;
-pin_shoulder_z = 3.5;
+pin_flange_d = 3.0;
+pin_flange_h = 0.5;
+pin_barrel_d = 2.0;
+pin_barrel_h = 7.0;
+pin_tip_d = 1.5;
+pin_tip_h = 2.5;
+pin_hole_clear = 0.15;
+pin_sleeve_od = 3.7;
+pin_sleeve_z = 3.2;
 
 // --- Pocket / lid ---
 wall = 1.6;
@@ -79,15 +86,16 @@ shell_w = shell_y1 - shell_y0;
 shell_ox = shell_x0 + pcb_insert_x_offset;
 shell_oy = shell_y0 + pcb_insert_y_offset;
 
-pin_body_hole = pin_body_d + 2 * tolerance;
-pin_tip_hole = pin_tip_d + 2 * tolerance;
-pin_bore_top_z = hook_h + wall + 1.5;
+pin_barrel_hole = pin_barrel_d + 2 * pin_hole_clear;
+pin_flange_hole = pin_flange_d + 2 * pin_hole_clear;
+pin_floor_z = hook_h + wall;
+pin_seat_z = pin_floor_z - pin_flange_h;
 
-if (layout == "lid") {
+if (part == 1) {
     lid();
 } else {
     adapter();
-    if (layout == "assembled")
+    if (part == 2)
         color([0.25, 0.55, 0.85, 0.72])
             lid();
 }
@@ -97,6 +105,7 @@ module adapter() {
         union() {
             hook();
             pcb_shell();
+            pin_sleeves();
         }
         pcb_cavity();
         usb_cutout();
@@ -105,6 +114,8 @@ module adapter() {
     }
     if (show_board_preview)
         board_preview();
+    if (show_pin_preview)
+        pin_preview();
 }
 
 module hook() {
@@ -144,17 +155,40 @@ module usb_cutout() {
                     square([cut_h - 2 * r, cut_w - 2 * r], center = true);
 }
 
-module pin_through_holes() {
-    bore_bottom_z = -clip_lip - 1;
-    tip_h = pin_shoulder_z + clip_lip + 1.2;
+module pin_sleeves() {
+    h = pin_floor_z - pin_sleeve_z + 0.2;
     for (x = pin_xs)
-        translate([x, 0, bore_bottom_z]) {
-            cylinder(h = tip_h, d = pin_tip_hole);
-            translate([0, 0, tip_h - eps])
-                cylinder(h = pin_bore_top_z - bore_bottom_z - tip_h + 2 * eps, d = pin_body_hole);
-            translate([0, 0, -0.8])
-                cylinder(h = 1.0, d1 = pin_body_hole + 0.6, d2 = pin_tip_hole);
+        translate([x, 0, pin_sleeve_z])
+            cylinder(h = h, d = pin_sleeve_od);
+}
+
+module pin_through_holes() {
+    for (x = pin_xs) {
+        translate([x, 0, -1])
+            cylinder(h = pin_floor_z + 2, d = pin_barrel_hole);
+        translate([x, 0, pin_seat_z])
+            cylinder(h = pin_flange_h + 1, d = pin_flange_hole);
+        translate([x, 0, -0.2])
+            cylinder(h = 1.2, d1 = pin_barrel_hole + 0.8, d2 = pin_barrel_hole);
+    }
+}
+
+module pin_preview() {
+    for (x = pin_xs)
+        translate([x, 0, pin_seat_z])
+            pogo_pin();
+}
+
+module pogo_pin() {
+    color([0.90, 0.75, 0.20, 0.95]) {
+        cylinder(h = pin_flange_h, d = pin_flange_d);
+        translate([0, 0, -pin_barrel_h])
+            cylinder(h = pin_barrel_h, d = pin_barrel_d);
+        translate([0, 0, -pin_barrel_h - pin_tip_h + pin_tip_d / 2]) {
+            cylinder(h = pin_tip_h - pin_tip_d / 2, d = pin_tip_d);
+            sphere(d = pin_tip_d);
         }
+    }
 }
 
 module board_preview() {
@@ -184,10 +218,6 @@ module board_preview() {
                     translate([header_x, py, pcb_thickness + 0.2]) {
                         color(pin_col)
                             cylinder(h = 0.8, d = 0.9);
-                        if (show_board_labels)
-                            color([0, 0, 0, 0.9])
-                                translate([0, 0, 1.05])
-                                    text(str(p), size = 2.0, halign = "center", valign = "center");
                     }
                 }
             }
@@ -252,7 +282,7 @@ module usb_c_capsule(l, w, h) {
 }
 
 module lid() {
-    if (layout == "lid")
+    if (part == 1)
         lid_for_print();
     else
         translate([shell_ox, shell_oy, hook_h + shell_h])
