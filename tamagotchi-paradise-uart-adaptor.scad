@@ -1,5 +1,5 @@
 // Tamagotchi Paradise UART adapter — all-in-one
-// Hook + low-profile CP210X pocket (no separate case or lid).
+// Hook + low-profile CP210X pocket + separate snap-fit lid.
 
 $fn = 64;
 eps = 0.05;
@@ -9,10 +9,10 @@ show_board_preview = true;
 show_board_labels = false;
 
 // What to render/export
-// "adapter"  -> base with rails
-// "lid"       -> sliding cover only
+// "adapter"   -> hook + open-top pocket
+// "lid"       -> snap lid, print orientation (top on bed)
 // "assembled" -> both together (for visual check)
-layout = "adapter";
+layout = "assembled";
 
 // --- CP210X board ---
 pcb_l = 24.2;
@@ -75,11 +75,16 @@ board_preview_angle = 0; // rotate CP210X preview only (0/90/180/270)
 pcb_insert_x_offset = 0; // mm
 pcb_insert_y_offset = 0; // mm
 
-// --- Internal sliding lid ---
-lid_t = 1.4;
-lid_clear = 0.35;
-lid_slot_d = 0.9;      // groove depth cut into inner side walls
-lid_slot_h = 1.8;      // groove height
+// --- Snap lid (separate part) ---
+lid_t = 1.6;           // lid plate thickness
+lid_clear = 0.28;      // skirt to inner-wall gap
+lid_skirt_h = 2.2;     // how far the skirt drops into the pocket
+lid_rim_t = 1.15;      // skirt wall thickness (flexes for the snap)
+lid_snap_d = 0.7;      // triangular bead depth (45° faces)
+lid_snap_h = 1.4;      // triangular bead height
+lid_snap_w = 12.0;     // bead length along the long walls
+lid_pry_w = 10.0;
+lid_pry_d = 1.2;
 
 // Derived
 pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang;
@@ -97,6 +102,8 @@ shell_x0 = hook_x0;
 shell_x1 = hook_l / 2;
 shell_y0 = -pcb_cav_w / 2 - wall;
 shell_y1 = pcb_cav_w / 2 + wall;
+shell_l = shell_x1 - shell_x0;
+shell_w = shell_y1 - shell_y0;
 shell_top_x0 = -pcb_cav_l / 2 - wall;
 shell_top_x1 = pcb_cav_l / 2 - wall;
 
@@ -108,7 +115,6 @@ pcb_y1 = pcb_cav_w / 2;
 pin_body_hole = pin_body_d + 2 * tolerance;
 pin_tip_hole = pin_tip_d + 2 * tolerance;
 pin_bore_top_z = hook_h + wall + 1.5;
-lid_slot_z0 = hook_h + shell_h - lid_t - lid_slot_h;
 
 if (layout == "adapter") {
     adapter();
@@ -116,7 +122,8 @@ if (layout == "adapter") {
     lid();
 } else if (layout == "assembled") {
     adapter();
-    lid();
+    color([0.25, 0.55, 0.85, 0.72])
+        lid();
 } else {
     adapter();
 }
@@ -130,6 +137,7 @@ module adapter() {
         pcb_cavity();
         usb_cutout();
         pin_through_holes();
+        lid_snap_recesses();
     }
     if (show_board_preview)
         board_preview();
@@ -308,6 +316,92 @@ module pin_holes_hook() {
                 cylinder(h = pin_bore_top_z + left_lip + 1, d = pin_body_hole);
             cylinder(h = 1.0, d1 = pin_body_hole + 0.6, d2 = pin_tip_hole);
         }
+}
+
+module lid() {
+    if (layout == "lid")
+        lid_for_print();
+    else
+        translate([
+            shell_x0 + pcb_insert_x_offset,
+            shell_y0 + pcb_insert_y_offset,
+            hook_h + shell_h
+        ])
+            lid_body();
+}
+
+module lid_for_print() {
+    translate([0, shell_w, lid_t])
+        rotate([180, 0, 0])
+            lid_body();
+}
+
+module lid_body() {
+    inner_l = shell_l - 2 * wall;
+    inner_w = shell_w - 2 * wall;
+    skirt_l = inner_l - 2 * lid_clear;
+    skirt_w = inner_w - 2 * lid_clear;
+    skirt_r = 0.6;
+    cut_l = skirt_l - 2 * lid_rim_t;
+    cut_w = skirt_w - 2 * lid_rim_t;
+    cut_r = max(0.2, skirt_r - lid_rim_t);
+
+    difference() {
+        union() {
+            rounded_cube([shell_l, shell_w, lid_t], hook_r);
+            translate([wall + lid_clear, wall + lid_clear, -lid_skirt_h])
+                rounded_cube([skirt_l, skirt_w, lid_skirt_h + eps], skirt_r);
+            lid_snap_beads(skirt_l, skirt_w);
+        }
+        translate([
+            wall + lid_clear + lid_rim_t,
+            wall + lid_clear + lid_rim_t,
+            -lid_skirt_h - 1
+        ])
+            rounded_cube([cut_l, cut_w, lid_skirt_h + 1 + eps], cut_r);
+        lid_pry_notch();
+    }
+}
+
+module lid_snap_beads(skirt_l, skirt_w) {
+    x0 = wall + lid_clear + (skirt_l - lid_snap_w) / 2;
+    y_pos = wall + lid_clear + skirt_w;
+    y_neg = wall + lid_clear;
+    z0 = -lid_skirt_h;
+    translate([x0, y_pos, z0])
+        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d);
+    translate([x0, y_neg, z0])
+        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d);
+}
+
+module lid_snap_recesses() {
+    ox = shell_x0 + pcb_insert_x_offset;
+    oy = shell_y0 + pcb_insert_y_offset;
+    z0 = hook_h + shell_h - lid_skirt_h;
+    gw = lid_snap_w + 1.6;
+    gh = lid_snap_h + 0.35;
+    gd = lid_snap_d - lid_clear + 0.22;
+    gx = ox + wall + lid_clear + (shell_l - 2 * wall - 2 * lid_clear - gw) / 2;
+
+    translate([gx, oy + shell_w - wall, z0])
+        snap_prism(gw, 1, gh, gd);
+    translate([gx, oy + wall, z0])
+        snap_prism(gw, -1, gh, gd);
+}
+
+module snap_prism(len, y_dir, h, d) {
+    hull() {
+        translate([0, y_dir > 0 ? 0 : -0.02, 0])
+            cube([len, 0.02, h]);
+        translate([0, y_dir * d, h / 2])
+            cube([len, 0.02, 0.02]);
+    }
+}
+
+module lid_pry_notch() {
+    translate([shell_l / 2, shell_w + 0.2, lid_t])
+        rotate([0, 90, 0])
+            cylinder(h = lid_pry_w, d = lid_pry_d * 2, center = true);
 }
 
 module rounded_cube(size, r) {
