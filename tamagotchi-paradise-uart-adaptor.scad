@@ -10,7 +10,7 @@ show_pin_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 2;
+part = 0;
 
 // --- CP210X board ---
 pcb_l = 24.2;
