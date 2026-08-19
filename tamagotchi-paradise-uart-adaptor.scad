@@ -8,6 +8,12 @@ tolerance = 0.2;
 show_board_preview = true;
 show_board_labels = false;
 
+// What to render/export
+// "adapter"  -> base with rails
+// "lid"       -> sliding cover only
+// "assembled" -> both together (for visual check)
+layout = "adapter";
+
 // --- CP210X board ---
 pcb_l = 24.2;
 pcb_w = 15.7;
@@ -69,11 +75,17 @@ board_preview_angle = 0; // rotate CP210X preview only (0/90/180/270)
 pcb_insert_x_offset = 0; // mm
 pcb_insert_y_offset = 0; // mm
 
+// --- Internal sliding lid ---
+lid_t = 1.4;
+lid_clear = 0.35;
+lid_slot_d = 0.9;      // groove depth cut into inner side walls
+lid_slot_h = 1.8;      // groove height
+
 // Derived
 pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang;
 pcb_cav_w = pcb_w + 2 * tolerance;
 pcb_cav_h = pcb_h + tolerance + headroom;
-shell_h = wall + pcb_cav_h + retain_lip;
+shell_h = wall + pcb_cav_h + retain_lip + lid_t;
 
 usb_cut_w = usb_w + 2 * tolerance + 0.6;
 usb_cut_h = usb_h + 2 * tolerance;
@@ -96,17 +108,25 @@ pcb_y1 = pcb_cav_w / 2;
 pin_body_hole = pin_body_d + 2 * tolerance;
 pin_tip_hole = pin_tip_d + 2 * tolerance;
 pin_bore_top_z = hook_h + wall + 1.5;
+lid_slot_z0 = hook_h + shell_h - lid_t - lid_slot_h;
 
-adapter();
+if (layout == "adapter") {
+    adapter();
+} else if (layout == "lid") {
+    lid();
+} else if (layout == "assembled") {
+    adapter();
+    lid();
+} else {
+    adapter();
+}
 
 module adapter() {
     difference() {
         union() {
             hook();
             pcb_shell();
-            pcb_stops();
         }
-        pcb_cavity();
         usb_cutout();
         pin_through_holes();
     }
@@ -179,21 +199,6 @@ module pin_through_holes() {
                 cylinder(h = 1.0, d1 = pin_body_hole + 0.6, d2 = pin_tip_hole);
         }
 }
-
-module pcb_stops() {
-    h = 0.9;
-    t = 0.7;
-    z = hook_h + wall;
-
-    // Front stop only (UART / wire end). No side rails — they sat on X=±12 and blocked pogo pins.
-    translate([pcb_x0 + pcb_insert_x_offset, pcb_y0 + pcb_insert_y_offset, z])
-        difference() {
-            cube([pcb_cav_l, t, pcb_cav_h - 0.5]);
-            translate([pcb_cav_l / 2 - 3.5, -1, 0])
-                cube([7.0, t + 2, pcb_cav_h]);
-        }
-}
-
 module board_preview() {
     board_z = hook_h + wall;
     // control the x, y poistion of preview cp210x board
