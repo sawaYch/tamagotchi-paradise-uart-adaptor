@@ -10,7 +10,7 @@ show_pin_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 0;
+part = 2;
 
 // --- CP210X board ---
 pcb_l = 24.2;
@@ -319,7 +319,17 @@ module lid_body() {
         ])
             rounded_cube([cut_l, cut_w, lid_skirt_h + 1 + eps], cut_r);
         lid_pry_notch();
+        lid_usb_skirt_cut();
     }
+}
+
+module lid_usb_skirt_cut() {
+    translate([-1, -1, -lid_skirt_h - 1])
+        cube([
+            wall + lid_clear + lid_rim_t + 2,
+            shell_w + 2,
+            lid_skirt_h + 1
+        ]);
 }
 
 module lid_snap_beads(skirt_l, skirt_w) {
