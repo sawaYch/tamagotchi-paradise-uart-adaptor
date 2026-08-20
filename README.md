@@ -25,7 +25,7 @@ openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o lid.
 
 ## Preview
 
-[Adapter](./adapter.stl) · [Lid](./lid.stl) · [Removed Lid with board & pin preview](./docs/preview-no-lid.stl)
+[Adapter](./adapter.stl) · [Lid](./lid.stl) · [Removed Lid with board & pin](./docs/preview-no-lid.stl) · [Closed Lid with board & pin](./docs/preview-with-lid.stl)
 
 ## Components
 
