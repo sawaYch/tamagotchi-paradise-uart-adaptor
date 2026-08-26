@@ -1,28 +1,30 @@
 // Tamagotchi Paradise UART adapter
-// Hook (Basic_rev2.stl) + CP210X pocket + snap-fit lid.
+// Hook (Basic_rev2.stl) + FT232RL pocket + snap-fit lid.
 
 $fn = 64;
 eps = 0.05;
 
 tolerance = 0.2;
-show_board_preview = true;
+show_board_preview = false;
 show_pin_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 2;
+part = 0;
 
-// --- CP210X board ---
-pcb_l = 24.2;
-pcb_w = 15.7;
-pcb_h = 4.8;
+// --- FT232RL USB-C module (36 x 18 mm) ---
+pcb_l = 36.0;
+pcb_w = 18.0;
 pcb_thickness = 1.6;
+jumper_h = 9.0;
+pcb_h = pcb_thickness + jumper_h;
 usb_w = 9.0;
 usb_h = 3.2;
 usb_overhang = 1.2;
 usb_shell_l = 7.2;
 usb_shell_w = 9.0;
 usb_shell_h = 3.2;
+header_overhang = 2.0;
 pad_pitch_y = 2.54;
 board_preview_angle = 0;
 pcb_insert_x_offset = 0;
@@ -67,7 +69,7 @@ lid_pry_w = 10.0;
 lid_pry_d = 1.2;
 
 // --- Derived ---
-pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang;
+pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang + header_overhang;
 pcb_cav_w = pcb_w + 2 * tolerance;
 pcb_cav_h = pcb_h + tolerance + headroom;
 shell_h = wall + pcb_cav_h + shell_extra;
@@ -78,10 +80,10 @@ usb_cut_h = usb_h + 2 * tolerance;
 hook_x0 = -hook_l / 2;
 hook_y0 = -hook_w / 2;
 shell_x0 = hook_x0;
-shell_x1 = hook_l / 2;
+shell_l = pcb_cav_l + 2 * wall;
+shell_x1 = shell_x0 + shell_l;
 shell_y0 = -pcb_cav_w / 2 - wall;
 shell_y1 = pcb_cav_w / 2 + wall;
-shell_l = shell_x1 - shell_x0;
 shell_w = shell_y1 - shell_y0;
 shell_ox = shell_x0 + pcb_insert_x_offset;
 shell_oy = shell_y0 + pcb_insert_y_offset;
@@ -192,33 +194,65 @@ module pogo_pin() {
 }
 
 module board_preview() {
-    board_x_offset = 3.5;
-    board_x0 = -pcb_l / 2 - board_x_offset;
+    board_x0 = hook_x0 + wall;
     board_y0 = -pcb_w / 2;
-    header_x = pcb_l / 2 - 1.2 - board_x_offset;
+    ic_l = 10.3;
+    ic_w = 5.3;
+    ic_h = 1.65;
+    jumper_x = board_x0 + 26.2;
+    jumper_post_h = 2.5;
+    header_x = board_x0 + pcb_l - 2.5;
+    header_body_w = 6 * pad_pitch_y + 0.5;
 
     translate([pcb_insert_x_offset, pcb_insert_y_offset, hook_h + wall])
         rotate([0, 0, board_preview_angle])
             union() {
-                color([0.35, 0.05, 0.45, 0.70])
+                color([0.78, 0.12, 0.14, 0.82])
                     translate([board_x0, board_y0, 0])
                         cube([pcb_l, pcb_w, pcb_thickness]);
 
                 translate([board_x0 - usb_overhang, 0, pcb_thickness])
                     usb_c_receptacle();
 
-                for (p = [1 : 6]) {
-                    py = (p - 3.5) * pad_pitch_y;
-                    pin_col =
-                        p == 3 ? [0.90, 0.25, 0.25, 0.95] :
-                        p == 4 ? [1.00, 0.65, 0.15, 0.95] :
-                        p == 5 ? [0.25, 0.85, 0.40, 0.95] :
-                                 [0.15, 0.15, 0.15, 0.65];
+                color([0.10, 0.10, 0.10, 0.96])
+                    translate([
+                        board_x0 + 14.2,
+                        -ic_w / 2,
+                        pcb_thickness
+                    ])
+                        cube([ic_l, ic_w, ic_h]);
 
-                    translate([header_x, py, pcb_thickness + 0.2]) {
+                color([0.12, 0.12, 0.12, 0.96])
+                    translate([
+                        jumper_x - 1.25,
+                        -pad_pitch_y * 1.5 - 1.2,
+                        pcb_thickness
+                    ])
+                        cube([2.5, pad_pitch_y * 3 + 2.4, jumper_post_h]);
+
+                color([0.08, 0.08, 0.08, 0.96])
+                    translate([jumper_x - 2.2, 0.2, pcb_thickness + jumper_post_h])
+                        cube([4.4, pad_pitch_y + 0.4, jumper_h - jumper_post_h]);
+
+                color([0.12, 0.12, 0.12, 0.96])
+                    translate([
+                        header_x,
+                        -header_body_w / 2,
+                        pcb_thickness
+                    ])
+                        cube([2.5, header_body_w, 2.5]);
+
+                for (p = [1 : 6]) {
+                    py = (3.5 - p) * pad_pitch_y;
+                    pin_col =
+                        p == 2 ? [0.35, 0.72, 0.95, 0.95] :
+                        p == 3 ? [0.25, 0.85, 0.40, 0.95] :
+                        p == 6 ? [0.55, 0.32, 0.16, 0.95] :
+                                 [0.82, 0.68, 0.18, 0.92];
+
+                    translate([header_x + 1.25, py, pcb_thickness + 2.5])
                         color(pin_col)
-                            cylinder(h = 0.8, d = 0.9);
-                    }
+                            cylinder(h = 4.2, d = 0.64);
                 }
             }
 }
