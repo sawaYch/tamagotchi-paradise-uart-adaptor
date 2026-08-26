@@ -1,5 +1,5 @@
 // Tamagotchi Paradise UART adapter
-// Hook (Basic_rev2.stl) + FT232RL pocket + snap-fit lid.
+// Hook (Basic_rev2.stl) + FT232RL pocket + wrap-around snap lid.
 
 $fn = 64;
 eps = 0.05;
@@ -10,7 +10,7 @@ show_pin_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 0;
+part = 2;
 
 // --- FT232RL USB-C module (36 x 18 mm) ---
 pcb_l = 36.0;
@@ -54,25 +54,49 @@ wall = 1.6;
 headroom = 0.6;
 shell_extra = 2;
 
+// Space under the PCB: solder fillet + 24 AWG + user-added isolator sheet
+solder_h = 1.0;
+wire_od = 1.4;
+isolator_h = 1.0;
+solder_well_h = solder_h + wire_od;
+board_lift = solder_well_h + isolator_h;
+ledge_w = 1.8;
+ledge_h = 1.2;
+
 usb_cut_tol = 0.6;
 usb_cut_round_r = 2.5;
-usb_cut_z_offset = 2;
 
 lid_t = 1.6;
-lid_clear = 0.28;
-lid_skirt_h = 2.2;
-lid_rim_t = 1.15;
-lid_snap_d = 0.7;
-lid_snap_h = 1.4;
-lid_snap_w = 12.0;
+lid_skirt_t = 1.5;
+lid_skirt_h = 4.0;
+lid_outer_clear = 0.15;
+lid_inner_clear = 0.12;
+lid_inner_h = 1.8;
+lid_inner_t = 1.2;
+lid_snap_d = 0.5;
+lid_snap_h = 1.6;
+lid_snap_w = 14.0;
+lid_snap_lift = 0.7;
 lid_pry_w = 10.0;
 lid_pry_d = 1.2;
+
+// --- Hook reinforcement (imported Basic_rev2.stl) ---
+prong_root_y = -2.5;
+prong_root_w = 5.0;
+prong_root_depth = 1.4;
+prong_root_extra = 0.9;
+prong_root_overlap = 0.25;
+
+grab_cyl_x = 6.0;
+grab_cyl_z = -0.20;
+grab_cyl_d = 2.8; // original = ~2.4mm
+grab_cyl_len = 5.7;
 
 // --- Derived ---
 pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang + header_overhang;
 pcb_cav_w = pcb_w + 2 * tolerance;
 pcb_cav_h = pcb_h + tolerance + headroom;
-shell_h = wall + pcb_cav_h + shell_extra;
+shell_h = wall + board_lift + pcb_cav_h + shell_extra;
 
 usb_cut_w = usb_w + 2 * tolerance + 0.6;
 usb_cut_h = usb_h + 2 * tolerance;
@@ -92,6 +116,8 @@ pin_barrel_hole = pin_barrel_d + 2 * pin_hole_clear;
 pin_flange_hole = pin_flange_d + 2 * pin_hole_clear;
 pin_floor_z = hook_h + wall;
 pin_seat_z = pin_floor_z - pin_flange_h;
+pcb_z = pin_floor_z + board_lift;
+ledge_z = pin_floor_z + solder_well_h - ledge_h;
 
 if (part == 1) {
     lid();
@@ -103,16 +129,21 @@ if (part == 1) {
 }
 
 module adapter() {
-    difference() {
-        union() {
-            hook();
-            pcb_shell();
-            pin_sleeves();
+    union() {
+        difference() {
+            union() {
+                hook();
+                pcb_shell();
+                pin_sleeves();
+                prong_root_reinforcement();
+                grab_cylinder();
+            }
+            pcb_cavity();
+            usb_cutout();
+            pin_through_holes();
+            lid_snap_grooves();
         }
-        pcb_cavity();
-        usb_cutout();
-        pin_through_holes();
-        lid_snap_recesses();
+        isolator_ledges();
     }
     if (show_board_preview)
         board_preview();
@@ -148,7 +179,7 @@ module usb_cutout() {
     r = min(usb_cut_round_r, cut_w / 2 - 0.2, cut_h / 2 - 0.2);
     x0 = shell_ox - 0.2;
     y0 = shell_oy + (shell_w - cut_w) / 2;
-    z0 = hook_h + wall + pcb_thickness + usb_cut_z_offset;
+    z0 = pcb_z + pcb_thickness + usb_h / 2;
 
     translate([x0, y0 + cut_w / 2, z0])
         rotate([0, 90, 0])
@@ -204,7 +235,7 @@ module board_preview() {
     header_x = board_x0 + pcb_l - 2.5;
     header_body_w = 6 * pad_pitch_y + 0.5;
 
-    translate([pcb_insert_x_offset, pcb_insert_y_offset, hook_h + wall])
+    translate([pcb_insert_x_offset, pcb_insert_y_offset, pcb_z])
         rotate([0, 0, board_preview_angle])
             union() {
                 color([0.78, 0.12, 0.14, 0.82])
@@ -315,6 +346,72 @@ module usb_c_capsule(l, w, h) {
                     cylinder(h = l, r = r);
 }
 
+module prong_root_reinforcement() {
+    gusset_tip_w = 0.4;
+    gusset_root_h = 0.55;
+    gusset_tip_h = 0.3;
+
+    hull() {
+        translate([
+            -9.0 - prong_root_extra,
+            prong_root_y,
+            -0.15
+        ])
+            cube([
+                prong_root_extra + prong_root_overlap,
+                prong_root_w,
+                gusset_root_h
+            ]);
+        translate([
+            -9.0 - prong_root_overlap,
+            prong_root_y,
+            -prong_root_depth
+        ])
+            cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
+    }
+
+    hull() {
+        translate([
+            -3.0 - prong_root_overlap,
+            prong_root_y,
+            -0.15
+        ])
+            cube([
+                prong_root_extra + prong_root_overlap,
+                prong_root_w,
+                gusset_root_h
+            ]);
+        translate([
+            -3.0 - gusset_tip_w + prong_root_overlap,
+            prong_root_y,
+            -prong_root_depth
+        ])
+            cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
+    }
+}
+
+module grab_cylinder() {
+    translate([grab_cyl_x, -grab_cyl_len / 2, grab_cyl_z])
+        rotate([-90, 0, 0])
+            cylinder(h = grab_cyl_len, d = grab_cyl_d);
+}
+
+module isolator_ledges() {
+    overlap = 0.3;
+    translate([
+        shell_ox + wall - overlap,
+        shell_oy + wall - overlap,
+        ledge_z
+    ])
+        cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
+    translate([
+        shell_ox + wall - overlap,
+        shell_oy + shell_w - wall - ledge_w,
+        ledge_z
+    ])
+        cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
+}
+
 module lid() {
     if (part == 1)
         lid_for_print();
@@ -324,68 +421,71 @@ module lid() {
 }
 
 module lid_for_print() {
-    translate([0, shell_w, lid_t])
+    translate([lid_skirt_t, shell_w + lid_skirt_t, lid_t])
         rotate([180, 0, 0])
             lid_body();
 }
 
 module lid_body() {
-    inner_l = shell_l - 2 * wall;
-    inner_w = shell_w - 2 * wall;
-    skirt_l = inner_l - 2 * lid_clear;
-    skirt_w = inner_w - 2 * lid_clear;
-    skirt_r = 0.6;
-    cut_l = skirt_l - 2 * lid_rim_t;
-    cut_w = skirt_w - 2 * lid_rim_t;
-    cut_r = max(0.2, skirt_r - lid_rim_t);
+    outer_l = shell_l + 2 * lid_skirt_t;
+    outer_w = shell_w + 2 * lid_skirt_t;
+    outer_r = hook_r + lid_skirt_t;
+    plug_l = shell_l - 2 * wall - 2 * lid_inner_clear;
+    plug_w = shell_w - 2 * wall - 2 * lid_inner_clear;
+    inner_cut_l = shell_l - 2 * lid_outer_clear;
+    inner_cut_w = shell_w - 2 * lid_outer_clear;
+    inner_cut_r = max(0.2, hook_r - lid_outer_clear);
 
     difference() {
         union() {
-            rounded_cube([shell_l, shell_w, lid_t], hook_r);
-            translate([wall + lid_clear, wall + lid_clear, -lid_skirt_h])
-                rounded_cube([skirt_l, skirt_w, lid_skirt_h + eps], skirt_r);
-            lid_snap_beads(skirt_l, skirt_w);
+            translate([-lid_skirt_t, -lid_skirt_t, 0])
+                rounded_cube([outer_l, outer_w, lid_t], outer_r);
+
+            difference() {
+                translate([-lid_skirt_t, -lid_skirt_t, -lid_skirt_h])
+                    rounded_cube([outer_l, outer_w, lid_skirt_h + 0.4], outer_r);
+                translate([lid_outer_clear, lid_outer_clear, -lid_skirt_h - 1])
+                    rounded_cube([inner_cut_l, inner_cut_w, lid_skirt_h + 2], inner_cut_r);
+            }
+
+            translate([wall + lid_inner_clear, wall + lid_inner_clear, -lid_inner_h])
+                difference() {
+                    rounded_cube([plug_l, plug_w, lid_inner_h + 0.4], 0.5);
+                    translate([lid_inner_t, lid_inner_t, -1])
+                        rounded_cube([
+                            plug_l - 2 * lid_inner_t,
+                            plug_w - 2 * lid_inner_t,
+                            lid_inner_h + 3
+                        ], 0.3);
+                }
+
+            lid_outer_snaps();
         }
-        translate([
-            wall + lid_clear + lid_rim_t,
-            wall + lid_clear + lid_rim_t,
-            -lid_skirt_h - 1
-        ])
-            rounded_cube([cut_l, cut_w, lid_skirt_h + 1 + eps], cut_r);
         lid_pry_notch();
-        lid_usb_skirt_cut();
     }
 }
 
-module lid_usb_skirt_cut() {
-    translate([-1, -1, -lid_skirt_h - 1])
-        cube([
-            wall + lid_clear + lid_rim_t + 2,
-            shell_w + 2,
-            lid_skirt_h + 1
-        ]);
+module lid_outer_snaps() {
+    embed = 0.2;
+    x0 = (shell_l - lid_snap_w) / 2;
+    z0 = -lid_skirt_h + lid_snap_lift;
+    translate([x0, shell_w - lid_outer_clear + embed, z0])
+        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d + embed);
+    translate([x0, lid_outer_clear - embed, z0])
+        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d + embed);
 }
 
-module lid_snap_beads(skirt_l, skirt_w) {
-    x0 = wall + lid_clear + (skirt_l - lid_snap_w) / 2;
-    z0 = -lid_skirt_h;
-    translate([x0, wall + lid_clear + skirt_w, z0])
-        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d);
-    translate([x0, wall + lid_clear, z0])
-        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d);
-}
+module lid_snap_grooves() {
+    z0 = hook_h + shell_h - lid_skirt_h + lid_snap_lift;
+    gw = lid_snap_w + 1.2;
+    gh = lid_snap_h + 0.25;
+    gd = lid_snap_d + 0.08;
+    gx = shell_ox + (shell_l - gw) / 2;
 
-module lid_snap_recesses() {
-    z0 = hook_h + shell_h - lid_skirt_h;
-    gw = lid_snap_w + 1.6;
-    gh = lid_snap_h + 0.35;
-    gd = lid_snap_d - lid_clear + 0.22;
-    gx = shell_ox + wall + lid_clear + (shell_l - 2 * wall - 2 * lid_clear - gw) / 2;
-
-    translate([gx, shell_oy + shell_w - wall, z0])
-        snap_prism(gw, 1, gh, gd);
-    translate([gx, shell_oy + wall, z0])
+    translate([gx, shell_oy + shell_w, z0])
         snap_prism(gw, -1, gh, gd);
+    translate([gx, shell_oy, z0])
+        snap_prism(gw, 1, gh, gd);
 }
 
 module snap_prism(len, y_dir, h, d) {
@@ -398,7 +498,7 @@ module snap_prism(len, y_dir, h, d) {
 }
 
 module lid_pry_notch() {
-    translate([shell_l / 2, shell_w + 0.2, lid_t])
+    translate([shell_l / 2, shell_w + lid_skirt_t + 0.2, lid_t])
         rotate([0, 90, 0])
             cylinder(h = lid_pry_w, d = lid_pry_d * 2, center = true);
 }
