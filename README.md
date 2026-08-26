@@ -29,11 +29,16 @@ openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o lid.
 
 ## Components
 
-### 1. CP2102 USB to ttl board (USB Type-C)
+### 1. FTL232RL USB to ttl module (USB Type-C)
 
-Remember to [install driver](https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads)  
-![cp210x](./docs/cp210x-board.png)  
-[Example Retail](https://item.taobao.com/item.htm?id=786109602441&mi_id=0000svrNCbdOST2PhjM6uqnH0rq7CW9Fo-mMpPjtxteKOhM&spm=tbpc.boughtlist.suborder_itemtitle.1.434b2e8dEOzAeG)
+![ftl232rl-module](./docs/ftl232rl-module.png)  
+[Example Retail](https://item.taobao.com/item.htm?from=detail&id=977654905255&mi_id=0000h-JgSDiB4f7Ho-2niVD6hPhUYCVJkwAm0X3ns97yCBI&spm=tbpc.orderdetail.suborder_itemtitle.1.1ac16aa62cI0VB)
+
+🚨🚨🚨 __Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can break your Tamagotchi Paradise device!!!__ 🚨🚨🚨
+
+Requirement:
+- Tamagotchi Paradise require input signal with 3.3v, otherwise the command will failed / damage your tamagotchi device
+- Baud rate need to support 460800
 
 ### 2. Pogo pins
 
