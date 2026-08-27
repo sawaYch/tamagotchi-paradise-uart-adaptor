@@ -5,12 +5,12 @@ $fn = 64;
 eps = 0.05;
 
 tolerance = 0.2;
-show_board_preview = false;
+show_board_preview = true;
 show_pin_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 2;
+part = 0;
 
 // --- FT232RL USB-C module (36 x 18 mm) ---
 pcb_l = 36.0;
