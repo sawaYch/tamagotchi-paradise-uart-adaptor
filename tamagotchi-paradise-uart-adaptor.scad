@@ -1,5 +1,5 @@
 // Tamagotchi Paradise UART adapter
-// Hook (Basic_rev2.stl) + FT232RL pocket + wrap-around snap lid.
+// Hook (Basic_rev2.stl) + FT232RL pocket + internal friction-fit lid.
 
 $fn = 64;
 eps = 0.05;
@@ -67,11 +67,8 @@ usb_cut_tol = 0.6;
 usb_cut_round_r = 2.5;
 
 lid_t = 1.6;
-lid_skirt_t = 1.5;
-lid_skirt_h = 4.0;
-lid_outer_clear = 0.15;
-lid_inner_clear = 0.12;
-lid_inner_h = 1.8;
+lid_inner_clear = 0.03;
+lid_inner_h = 3.0;
 lid_inner_t = 1.2;
 lid_snap_d = 0.5;
 lid_snap_h = 1.6;
@@ -83,8 +80,8 @@ lid_pry_d = 1.2;
 // --- Hook reinforcement (imported Basic_rev2.stl) ---
 prong_root_y = -2.5;
 prong_root_w = 5.0;
-prong_root_depth = 1.4;
-prong_root_extra = 0.9;
+prong_root_depth = 3.45;
+prong_root_extra = 1.25;
 prong_root_overlap = 0.25;
 
 grab_cyl_x = 6.0;
@@ -141,7 +138,7 @@ module adapter() {
             pcb_cavity();
             usb_cutout();
             pin_through_holes();
-            lid_snap_grooves();
+            //lid_inner_snap_recesses();
         }
         isolator_ledges();
     }
@@ -421,32 +418,18 @@ module lid() {
 }
 
 module lid_for_print() {
-    translate([lid_skirt_t, shell_w + lid_skirt_t, lid_t])
+    translate([0, shell_w, lid_t])
         rotate([180, 0, 0])
             lid_body();
 }
 
 module lid_body() {
-    outer_l = shell_l + 2 * lid_skirt_t;
-    outer_w = shell_w + 2 * lid_skirt_t;
-    outer_r = hook_r + lid_skirt_t;
     plug_l = shell_l - 2 * wall - 2 * lid_inner_clear;
     plug_w = shell_w - 2 * wall - 2 * lid_inner_clear;
-    inner_cut_l = shell_l - 2 * lid_outer_clear;
-    inner_cut_w = shell_w - 2 * lid_outer_clear;
-    inner_cut_r = max(0.2, hook_r - lid_outer_clear);
 
     difference() {
         union() {
-            translate([-lid_skirt_t, -lid_skirt_t, 0])
-                rounded_cube([outer_l, outer_w, lid_t], outer_r);
-
-            difference() {
-                translate([-lid_skirt_t, -lid_skirt_t, -lid_skirt_h])
-                    rounded_cube([outer_l, outer_w, lid_skirt_h + 0.4], outer_r);
-                translate([lid_outer_clear, lid_outer_clear, -lid_skirt_h - 1])
-                    rounded_cube([inner_cut_l, inner_cut_w, lid_skirt_h + 2], inner_cut_r);
-            }
+            rounded_cube([shell_l, shell_w, lid_t], hook_r);
 
             translate([wall + lid_inner_clear, wall + lid_inner_clear, -lid_inner_h])
                 difference() {
@@ -459,32 +442,33 @@ module lid_body() {
                         ], 0.3);
                 }
 
-            lid_outer_snaps();
+            //lid_inner_snaps(plug_l, plug_w);
         }
         lid_pry_notch();
     }
 }
 
-module lid_outer_snaps() {
-    embed = 0.2;
+module lid_inner_snaps(plug_l, plug_w) {
     x0 = (shell_l - lid_snap_w) / 2;
-    z0 = -lid_skirt_h + lid_snap_lift;
-    translate([x0, shell_w - lid_outer_clear + embed, z0])
-        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d + embed);
-    translate([x0, lid_outer_clear - embed, z0])
-        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d + embed);
+    y0 = wall + lid_inner_clear;
+    z0 = -lid_inner_h + 0.15;
+
+    translate([x0, y0, z0])
+        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d);
+    translate([x0, y0 + plug_w, z0])
+        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d);
 }
 
-module lid_snap_grooves() {
-    z0 = hook_h + shell_h - lid_skirt_h + lid_snap_lift;
+module lid_inner_snap_recesses() {
+    z0 = hook_h + shell_h - lid_inner_h + 0.15;
     gw = lid_snap_w + 1.2;
     gh = lid_snap_h + 0.25;
     gd = lid_snap_d + 0.08;
     gx = shell_ox + (shell_l - gw) / 2;
 
-    translate([gx, shell_oy + shell_w, z0])
+    translate([gx, shell_oy + wall, z0])
         snap_prism(gw, -1, gh, gd);
-    translate([gx, shell_oy, z0])
+    translate([gx, shell_oy + shell_w - wall, z0])
         snap_prism(gw, 1, gh, gd);
 }
 
@@ -498,7 +482,7 @@ module snap_prism(len, y_dir, h, d) {
 }
 
 module lid_pry_notch() {
-    translate([shell_l / 2, shell_w + lid_skirt_t + 0.2, lid_t])
+    translate([shell_l / 2, shell_w + 0.2, lid_t])
         rotate([0, 90, 0])
             cylinder(h = lid_pry_w, d = lid_pry_d * 2, center = true);
 }

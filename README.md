@@ -14,18 +14,37 @@ winget install -e --id OpenSCAD.OpenSCAD
 brew install --cask openscad@snapshot
 ```
 
+## Install just
+
+```bash
+# Windows
+winget install -e --id Casey.Just
+
+# MacOS
+brew install just
+```
+
 ## Generate .stl for 3D printing
 
-`part`: `0` = adapter, `1` = lid. These commands work in Windows PowerShell (no quoted strings).
+Generate the printable adapter and lid:
 
-```powershell
-openscad -D part=0 -D show_board_preview=false -D show_pin_preview=false -o adapter.stl tamagotchi-paradise-uart-adaptor.scad
-openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o lid.stl tamagotchi-paradise-uart-adaptor.scad
+```bash
+just print
+```
+
+Generate an individual part with `just adapter` or `just lid`. Generate all printable and preview files with:
+
+```bash
+just all
 ```
 
 ## Preview
 
 [Adapter](./adapter.stl) · [Lid](./lid.stl) · [Removed Lid with board & pin](./docs/preview-no-lid.stl) · [Closed Lid with board & pin](./docs/preview-with-lid.stl)
+
+```bash
+just preview
+```
 
 ## Components
 
@@ -34,7 +53,7 @@ openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o lid.
 ![ftl232rl-module](./docs/ftl232rl-module.png)  
 [Example Retail](https://item.taobao.com/item.htm?from=detail&id=977654905255&mi_id=0000h-JgSDiB4f7Ho-2niVD6hPhUYCVJkwAm0X3ns97yCBI&spm=tbpc.orderdetail.suborder_itemtitle.1.1ac16aa62cI0VB)
 
-🚨🚨🚨 __Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can break your Tamagotchi Paradise device!!!__ 🚨🚨🚨
+🚨🚨🚨 __Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can damage your Tamagotchi Paradise device!!!__ 🚨🚨🚨
 
 Requirement:
 - Tamagotchi Paradise require input signal with 3.3v, otherwise the command will failed / damage your tamagotchi device
