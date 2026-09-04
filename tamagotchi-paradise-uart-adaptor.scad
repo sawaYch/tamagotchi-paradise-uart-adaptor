@@ -51,6 +51,7 @@ pin_sleeve_z = 3.2;
 
 // --- Pocket / lid ---
 wall = 1.6;
+wall_inner = wall - 0.1;
 headroom = 0.6;
 shell_extra = 2;
 
@@ -84,9 +85,15 @@ prong_root_depth = 3.45;
 prong_root_extra = 1.25;
 prong_root_overlap = 0.25;
 
+// Detent faces that clip the Tamagotchi's grab bar (measured from STL)
+prong_grab_shave = 0.1;
+prong_grab_face_l = -7.112;
+prong_grab_face_r = -4.888;
+prong_grab_z = -2.49;
+
 grab_cyl_x = 6.0;
 grab_cyl_z = -0.20;
-grab_cyl_d = 2.8; // original = ~2.4mm
+grab_cyl_d = 2.64; // original = ~2.4mm
 grab_cyl_len = 5.7;
 
 // --- Derived ---
@@ -138,6 +145,7 @@ module adapter() {
             pcb_cavity();
             usb_cutout();
             pin_through_holes();
+            prong_grab_relief();
             //lid_inner_snap_recesses();
         }
         isolator_ledges();
@@ -161,10 +169,10 @@ module pcb_shell() {
 }
 
 module pcb_cavity() {
-    translate([shell_ox + wall, shell_oy + wall, hook_h + wall])
+    translate([shell_ox + wall_inner, shell_oy + wall_inner, hook_h + wall])
         rounded_cube([
-            shell_l - 2 * wall,
-            shell_w - 2 * wall,
+            shell_l - 2 * wall_inner,
+            shell_w - 2 * wall_inner,
             shell_h - wall + 1
         ], 0.6);
 }
@@ -393,6 +401,16 @@ module grab_cylinder() {
             cylinder(h = grab_cyl_len, d = grab_cyl_d);
 }
 
+module prong_grab_relief() {
+    m = 0.3;
+    z_span = 1.0;
+    y_span = 5.6;
+    translate([prong_grab_face_l - prong_grab_shave, -y_span / 2, prong_grab_z - z_span / 2])
+        cube([prong_grab_shave + m, y_span, z_span]);
+    translate([prong_grab_face_r - m, -y_span / 2, prong_grab_z - z_span / 2])
+        cube([prong_grab_shave + m, y_span, z_span]);
+}
+
 module isolator_ledges() {
     overlap = 0.3;
     translate([
@@ -424,8 +442,8 @@ module lid_for_print() {
 }
 
 module lid_body() {
-    plug_l = shell_l - 2 * wall - 2 * lid_inner_clear;
-    plug_w = shell_w - 2 * wall - 2 * lid_inner_clear;
+    plug_l = shell_l - 2 * wall_inner - 2 * lid_inner_clear;
+    plug_w = shell_w - 2 * wall_inner - 2 * lid_inner_clear;
 
     difference() {
         union() {

@@ -94,7 +94,10 @@ Here I use A-SMT pin, (flat flange, no tail) with following spec:
 10 mm overall.
 ```
 
-![pogopin](./docs/pin.png)  
+<img src="./docs/pin.png"
+         alt="pogopin"
+         height="512px"
+         width="auto">   
 [Example Retail](https://item.taobao.com/item.htm?id=836549063705&mi_id=0000gXqq91Ah3jaaENDyuLehYernuiv4zQMBeJ2WHqH3nCw&spm=tbpc.boughtlist.suborder_itempic.d836549063705.62082e8dhEZmYZ)
 
 ### 3. Wire for soldering
@@ -105,10 +108,13 @@ Any wire (suggest to use 24 AWG) for soldering TX, RX, GND to the pogo pins.
 
 Soldering the pin reference to the following scheme, the left side of the adaptor plug your own USB type-c cable to your PC.
 
-![connection-scheme](./docs/connection-scheme.png)
+<img src="./docs/connection-scheme-rev2-4.png"
+         alt="connection-scheme"
+         height="620px"
+         width="auto">  
 
 ## Gallery
-
+_Model 3D Print in FDM ABS_
 <div style="display: flex; gap: 0px;">
 <img src="./docs/assemble-0.jpg"
          alt="asm-0"
