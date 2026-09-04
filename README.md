@@ -2,6 +2,18 @@
 
 ![cc-by-nc-sa-shield](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
 
+<figure>
+<img src="./docs/assemble-0.jpg"
+         alt="assemble-0"
+         height="512px"
+         width="auto">
+<figcaption>My adaptor plug to a Tamagotchi Paradise device 💗💖</figcaption>
+</figure>
+
+## Introduction
+
+This is a UART adaptor for connecting your personal computer to Tamagotchi Paradise via `USB Type-C` cable.
+
 ## Install OpenSCAD
 
 This project use OpenSCAD script to model the adaptor
@@ -50,12 +62,23 @@ just preview
 
 ### 1. FTL232RL USB to ttl module (USB Type-C)
 
-![ftl232rl-module](./docs/ftl232rl-module.png)  
+<div style="display: flex; gap: 0px;">
+<img src="./docs/ftl232rl-module.png"
+         alt="ftl232rl-module"
+         height="280px"
+         width="auto">  
+<img src="./docs/ft232rl-preivew.jpg"
+         alt="ftl232rl-preview"
+         height="280px"
+         width="auto">   
+</div>
+
 [Example Retail](https://item.taobao.com/item.htm?from=detail&id=977654905255&mi_id=0000h-JgSDiB4f7Ho-2niVD6hPhUYCVJkwAm0X3ns97yCBI&spm=tbpc.orderdetail.suborder_itemtitle.1.1ac16aa62cI0VB)
 
-🚨🚨🚨 __Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can damage your Tamagotchi Paradise device!!!__ 🚨🚨🚨
+🚨🚨🚨 **Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can damage your Tamagotchi Paradise device!!!** 🚨🚨🚨
 
 Requirement:
+
 - Tamagotchi Paradise require input signal with 3.3v, otherwise the command will failed / damage your tamagotchi device
 - Baud rate need to support 460800
 
@@ -83,6 +106,27 @@ Any wire (suggest to use 24 AWG) for soldering TX, RX, GND to the pogo pins.
 Soldering the pin reference to the following scheme, the left side of the adaptor plug your own USB type-c cable to your PC.
 
 ![connection-scheme](./docs/connection-scheme.png)
+
+## Gallery
+
+<div style="display: flex; gap: 0px;">
+<img src="./docs/assemble-0.jpg"
+         alt="asm-0"
+         height="250px"
+         width="auto">  
+<img src="./docs/assemble-1.jpg"
+         alt="asm-1"
+         height="250px"
+         width="auto">  
+<img src="./docs/assemble-2.jpg"
+         alt="asm-2"
+         height="250px"
+         width="auto">
+<img src="./docs/assemble-3.jpg"
+         alt="asm-3"
+         height="250px"
+         width="auto">     
+</div>
 
 ## Special Thanks
 
