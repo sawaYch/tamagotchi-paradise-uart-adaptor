@@ -31,7 +31,7 @@ pcb_insert_x_offset = 0;
 pcb_insert_y_offset = 0;
 
 // --- Hook ---
-stl_file = "reference-stl/Basic_rev2.stl";
+stl_file = "../../reference-stl/Basic_rev2.stl";
 hook_l = 35.0;
 hook_w = 14.0;
 hook_h = 6.35;

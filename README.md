@@ -38,25 +38,23 @@ brew install just
 
 ## Generate .stl for 3D printing
 
-Generate the printable adapter and lid:
+Generate the printable wired adapter and lid:
 
 ```bash
-just print
+just wire
 ```
 
-Generate an individual part with `just adapter` or `just lid`. Generate all printable and preview files with:
+Generate the AAA battery holder for the future wireless version:
 
 ```bash
-just all
+just wireless-3a-battery
 ```
 
-## Preview
+Generate both with `just all`.
 
-[Adapter](./adapter.stl) · [Lid](./lid.stl) · [Removed Lid with board & pin](./docs/preview-no-lid.stl) · [Closed Lid with board & pin](./docs/preview-with-lid.stl)
+## Models
 
-```bash
-just preview
-```
+[Wired adapter](./models/wire/wire-adaptor.stl) · [Wired lid](./models/wire/wire-lid.stl) · [Wireless AAA battery holder](./models/wireless/wireless-3a-battery.stl)
 
 ## Components
 
