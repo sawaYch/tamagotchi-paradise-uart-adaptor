@@ -1,5 +1,5 @@
-// Tamagotchi Paradise UART adapter
-// Hook (Basic_rev2.stl) + FT232RL pocket + internal friction-fit lid.
+// Tamagotchi Paradise wireless UART adapter
+// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + internal friction-fit lid.
 
 $fn = 64;
 eps = 0.05;
@@ -12,19 +12,16 @@ show_pin_preview = true;
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
 part = 0;
 
-// --- FT232RL USB-C module (36 x 18 mm) ---
-pcb_l = 36.0;
-pcb_w = 18.0;
+// --- JDY-23 BLE 5.0 module with base plate (32.7 x 18.3 mm) ---
+pcb_l = 32.7;
+pcb_w = 18.3;
 pcb_thickness = 1.6;
-jumper_h = 9.0;
-pcb_h = pcb_thickness + jumper_h;
-usb_w = 9.0;
-usb_h = 3.2;
-usb_overhang = 1.2;
-usb_shell_l = 7.2;
-usb_shell_w = 9.0;
-usb_shell_h = 3.2;
-header_overhang = 2.0;
+// SMT module stack on the carrier (~19.6 x 14.94 x 1.8) plus pin header clearance
+module_l = 19.6;
+module_w = 14.94;
+module_h = 1.8;
+header_h = 8.5;
+pcb_h = pcb_thickness + header_h;
 pad_pitch_y = 2.54;
 board_preview_angle = 0;
 pcb_insert_x_offset = 0;
@@ -55,6 +52,14 @@ wall_inner = wall - 0.1;
 headroom = 0.6;
 shell_extra = 2;
 
+// Extra pocket around the JDY-23 pin header for soldering TX/RX/GND/VCC wires
+pin_solder_clear = 6.0;   // along X, ahead of the header (toward pogo pins)
+side_wire_clear = 1.5;    // each Y side beyond fit tolerance
+
+// Bluetooth-symbol RF window at the antenna (+X) end
+ble_symbol_h = 9.0;
+ble_symbol_stroke = 1.35;
+
 // Space under the PCB: solder fillet + 24 AWG + user-added isolator sheet
 solder_h = 1.0;
 wire_od = 1.4;
@@ -63,9 +68,6 @@ solder_well_h = solder_h + wire_od;
 board_lift = solder_well_h + isolator_h;
 ledge_w = 1.8;
 ledge_h = 1.2;
-
-usb_cut_tol = 0.6;
-usb_cut_round_r = 2.5;
 
 lid_t = 1.6;
 lid_inner_clear = 0.03;
@@ -97,13 +99,10 @@ grab_cyl_d = 2.64; // original = ~2.4mm
 grab_cyl_len = 5.7;
 
 // --- Derived ---
-pcb_cav_l = pcb_l + 2 * tolerance + usb_overhang + header_overhang;
-pcb_cav_w = pcb_w + 2 * tolerance;
+pcb_cav_l = pcb_l + 2 * tolerance + pin_solder_clear;
+pcb_cav_w = pcb_w + 2 * tolerance + 2 * side_wire_clear;
 pcb_cav_h = pcb_h + tolerance + headroom;
 shell_h = wall + board_lift + pcb_cav_h + shell_extra;
-
-usb_cut_w = usb_w + 2 * tolerance + 0.6;
-usb_cut_h = usb_h + 2 * tolerance;
 
 hook_x0 = -hook_l / 2;
 hook_y0 = -hook_w / 2;
@@ -115,6 +114,10 @@ shell_y1 = pcb_cav_w / 2 + wall;
 shell_w = shell_y1 - shell_y0;
 shell_ox = shell_x0 + pcb_insert_x_offset;
 shell_oy = shell_y0 + pcb_insert_y_offset;
+
+// Board sits past the solder pocket so the pin header is not against the wall
+board_x0 = hook_x0 + wall + pin_solder_clear;
+board_y0 = -pcb_w / 2;
 
 pin_barrel_hole = pin_barrel_d + 2 * pin_hole_clear;
 pin_flange_hole = pin_flange_d + 2 * pin_hole_clear;
@@ -143,7 +146,7 @@ module adapter() {
                 grab_cylinder();
             }
             pcb_cavity();
-            usb_cutout();
+            ble_cutout();
             pin_through_holes();
             prong_grab_relief();
             //lid_inner_snap_recesses();
@@ -177,20 +180,65 @@ module pcb_cavity() {
         ], 0.6);
 }
 
-module usb_cutout() {
-    cut_w = usb_cut_w + 2 * usb_cut_tol;
-    cut_h = usb_cut_h + 2 * usb_cut_tol;
+module ble_cutout() {
     depth = wall + 6;
-    r = min(usb_cut_round_r, cut_w / 2 - 0.2, cut_h / 2 - 0.2);
-    x0 = shell_ox - 0.2;
-    y0 = shell_oy + (shell_w - cut_w) / 2;
-    z0 = pcb_z + pcb_thickness + usb_h / 2;
+    // Antenna keep-out sits at the free (+X) end of the board
+    x0 = shell_ox + shell_l + 0.2;
+    z0 = pcb_z + pcb_thickness + module_h / 2;
 
-    translate([x0, y0 + cut_w / 2, z0])
-        rotate([0, 90, 0])
+    translate([x0, 0, z0])
+        rotate([0, -90, 0])
             linear_extrude(height = depth)
-                offset(r = r)
-                    square([cut_h - 2 * r, cut_w - 2 * r], center = true);
+                rotate([0, 0, 90])
+                    bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
+}
+
+// Classic Bluetooth rune: vertical stem, right-pointing B bowls, left X arms.
+// Support bridges keep the two B-bowl islands attached for printing.
+module bluetooth_symbol_2d(height, stroke) {
+    h = height;
+    t = stroke;
+    tip_x = h * 0.40;
+    mid_y = h * 0.06;
+    support_w = max(0.9, t * 0.75);
+    support_len = t + h * 0.28;
+
+    difference() {
+        union() {
+            bluetooth_bar([0, h / 2], [0, -h / 2], t);
+            bluetooth_bar([0, h / 2], [tip_x, mid_y], t);
+            bluetooth_bar([tip_x, mid_y], [0, -mid_y], t);
+            bluetooth_bar([0, mid_y], [tip_x, -mid_y], t);
+            bluetooth_bar([tip_x, -mid_y], [0, -h / 2], t);
+            bluetooth_bar([-tip_x, h * 0.34], [0, 0], t);
+            bluetooth_bar([-tip_x, -h * 0.34], [0, 0], t);
+        }
+        // Leave solid bridges perpendicular to the outer hypotenuses
+        bluetooth_perp_support(0, h / 2, tip_x, mid_y, support_len, support_w);
+        bluetooth_perp_support(tip_x, -mid_y, 0, -h / 2, support_len, support_w);
+    }
+}
+
+module bluetooth_perp_support(ax, ay, bx, by, len, w) {
+    mx = (ax + bx) / 2;
+    my = (ay + by) / 2;
+    dx = bx - ax;
+    dy = by - ay;
+    nlen = sqrt(dx * dx + dy * dy);
+    nx = -dy / nlen;
+    ny = dx / nlen;
+    bluetooth_bar(
+        [mx - nx * len / 2, my - ny * len / 2],
+        [mx + nx * len / 2, my + ny * len / 2],
+        w
+    );
+}
+
+module bluetooth_bar(a, b, t) {
+    hull() {
+        translate(a) circle(d = t, $fn = 24);
+        translate(b) circle(d = t, $fn = 24);
+    }
 }
 
 module pin_sleeves() {
@@ -230,125 +278,78 @@ module pogo_pin() {
 }
 
 module board_preview() {
-    board_x0 = hook_x0 + wall;
-    board_y0 = -pcb_w / 2;
-    ic_l = 10.3;
-    ic_w = 5.3;
-    ic_h = 1.65;
-    jumper_x = board_x0 + 26.2;
-    jumper_post_h = 2.5;
-    header_x = board_x0 + pcb_l - 2.5;
-    header_body_w = 6 * pad_pitch_y + 0.5;
+    // Antenna / module toward +X (free end); 6-pin header toward -X (near pogo pins)
+    header_x = board_x0 + 1.2;
+    header_body_w = 5 * pad_pitch_y + 2.2;
+    header_body_l = 2.5;
+    header_body_h = 2.5;
+    module_x = board_x0 + pcb_l - module_l - 1.2;
+    module_y = -module_w / 2;
+    led_d = 1.6;
 
     translate([pcb_insert_x_offset, pcb_insert_y_offset, pcb_z])
         rotate([0, 0, board_preview_angle])
             union() {
-                color([0.78, 0.12, 0.14, 0.82])
+                // Carrier PCB
+                color([0.12, 0.42, 0.22, 0.90])
                     translate([board_x0, board_y0, 0])
                         cube([pcb_l, pcb_w, pcb_thickness]);
 
-                translate([board_x0 - usb_overhang, 0, pcb_thickness])
-                    usb_c_receptacle();
+                // Antenna keep-out silkscreen near free end
+                color([0.92, 0.92, 0.88, 0.55])
+                    translate([board_x0 + pcb_l - 6.5, board_y0 + 1.0, pcb_thickness])
+                        cube([5.0, pcb_w - 2.0, 0.05]);
 
+                // JDY-23 SMT module
                 color([0.10, 0.10, 0.10, 0.96])
+                    translate([module_x, module_y, pcb_thickness])
+                        cube([module_l, module_w, module_h]);
+
+                // Shield window / RF marking
+                color([0.55, 0.55, 0.58, 0.90])
                     translate([
-                        board_x0 + 14.2,
-                        -ic_w / 2,
+                        module_x + module_l - 5.2,
+                        -3.0,
+                        pcb_thickness + module_h
+                    ])
+                        cube([3.8, 6.0, 0.08]);
+
+                // Status LED
+                color([0.15, 0.85, 0.30, 0.95])
+                    translate([
+                        header_x + header_body_l + 2.0,
+                        pcb_w / 2 - 2.2,
                         pcb_thickness
                     ])
-                        cube([ic_l, ic_w, ic_h]);
+                        cylinder(h = 0.7, d = led_d);
 
-                color([0.12, 0.12, 0.12, 0.96])
-                    translate([
-                        jumper_x - 1.25,
-                        -pad_pitch_y * 1.5 - 1.2,
-                        pcb_thickness
-                    ])
-                        cube([2.5, pad_pitch_y * 3 + 2.4, jumper_post_h]);
-
-                color([0.08, 0.08, 0.08, 0.96])
-                    translate([jumper_x - 2.2, 0.2, pcb_thickness + jumper_post_h])
-                        cube([4.4, pad_pitch_y + 0.4, jumper_h - jumper_post_h]);
-
+                // 6-pin 2.54 mm header (STATE, RXD, TXD, GND, VCC, EN)
                 color([0.12, 0.12, 0.12, 0.96])
                     translate([
                         header_x,
                         -header_body_w / 2,
                         pcb_thickness
                     ])
-                        cube([2.5, header_body_w, 2.5]);
+                        cube([header_body_l, header_body_w, header_body_h]);
 
-                for (p = [1 : 6]) {
-                    py = (3.5 - p) * pad_pitch_y;
+                for (p = [0 : 5]) {
+                    py = (2.5 - p) * pad_pitch_y;
                     pin_col =
-                        p == 2 ? [0.35, 0.72, 0.95, 0.95] :
-                        p == 3 ? [0.25, 0.85, 0.40, 0.95] :
-                        p == 6 ? [0.55, 0.32, 0.16, 0.95] :
+                        p == 1 ? [0.35, 0.72, 0.95, 0.95] :
+                        p == 2 ? [0.25, 0.85, 0.40, 0.95] :
+                        p == 3 ? [0.55, 0.32, 0.16, 0.95] :
+                        p == 4 ? [0.90, 0.20, 0.18, 0.95] :
                                  [0.82, 0.68, 0.18, 0.92];
 
-                    translate([header_x + 1.25, py, pcb_thickness + 2.5])
+                    translate([
+                        header_x + header_body_l / 2,
+                        py,
+                        pcb_thickness + header_body_h
+                    ])
                         color(pin_col)
-                            cylinder(h = 4.2, d = 0.64);
+                            cylinder(h = header_h - header_body_h, d = 0.64);
                 }
             }
-}
-
-module usb_c_receptacle() {
-    w = usb_shell_w;
-    h = usb_shell_h;
-    l = usb_shell_l;
-    metal_t = 0.32;
-    cavity_l = 5.5;
-    inner_w = w - 2 * metal_t;
-    inner_h = h - 2 * metal_t;
-    tongue_w = 6.55;
-    tongue_h = 0.72;
-    tongue_l = 4.3;
-    tab_l = 2.4;
-    tab_w = 0.85;
-    tab_h = 0.28;
-
-    color([0.76, 0.78, 0.81, 0.96])
-        difference() {
-            usb_c_capsule(l, w, h);
-            translate([-eps, 0, metal_t])
-                usb_c_capsule(cavity_l + eps, inner_w, inner_h);
-        }
-
-    color([0.10, 0.10, 0.11, 0.96]) {
-        translate([cavity_l - 0.35, 0, metal_t + 0.08])
-            usb_c_capsule(l - cavity_l + 0.35, inner_w - 0.2, inner_h - 0.16);
-        translate([0.28, 0, (h - tongue_h) / 2])
-            usb_c_capsule(tongue_l, tongue_w, tongue_h);
-    }
-
-    color([0.90, 0.70, 0.18, 0.96]) {
-        n = 8;
-        pad_w = 0.32;
-        pad_l = 2.3;
-        span = 5.5;
-        z0 = (h - tongue_h) / 2;
-        for (side = [0, 1])
-            for (i = [0 : n - 1]) {
-                py = -span / 2 + i * span / (n - 1);
-                translate([0.85, py, z0 + (side ? tongue_h : 0) - 0.03])
-                    cube([pad_l, pad_w, 0.06], center = true);
-            }
-    }
-
-    color([0.76, 0.78, 0.81, 0.96])
-        for (s = [-1, 1])
-            translate([l * 0.42, s * (w / 2 + tab_w / 2), tab_h / 2])
-                cube([tab_l, tab_w, tab_h], center = true);
-}
-
-module usb_c_capsule(l, w, h) {
-    r = h / 2;
-    hull()
-        for (s = [-1, 1])
-            translate([0, s * (w / 2 - r), r])
-                rotate([0, 90, 0])
-                    cylinder(h = l, r = r);
 }
 
 module prong_root_reinforcement() {
