@@ -1,5 +1,5 @@
 // Tamagotchi Paradise wireless UART adapter
-// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + internal friction-fit lid.
+// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + magnetic lid.
 
 $fn = 64;
 eps = 0.05;
@@ -7,10 +7,11 @@ eps = 0.05;
 tolerance = 0.2;
 show_board_preview = true;
 show_pin_preview = true;
+show_magnet_preview = true;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 0;
+part = 2;
 
 // --- JDY-23 BLE 5.0 module with base plate (32.7 x 18.3 mm) ---
 pcb_l = 32.7;
@@ -69,14 +70,32 @@ board_lift = solder_well_h + isolator_h;
 ledge_w = 1.8;
 ledge_h = 1.2;
 
-lid_t = 1.6;
-lid_inner_clear = 0.03;
-lid_inner_h = 3.0;
-lid_inner_t = 1.2;
-lid_snap_d = 0.5;
-lid_snap_h = 1.6;
-lid_snap_w = 14.0;
-lid_snap_lift = 0.7;
+// 5 x 2 mm N52 discs, one pair at each corner. 2 mm is thick enough to
+// hold this lid (~0.6 kg pull per magnet) without a deep pocket.
+mag_d = 5.0;
+mag_h = 2.0;
+mag_fit = 0.3;
+mag_pocket_d = mag_d + mag_fit;
+mag_pocket_h = mag_h + 0.15;
+mag_floor = 0.7;
+mag_skin = 0.8;
+mag_wall_skin = 1.2;
+mag_inset = max(
+    mag_pocket_d / 2 + mag_wall_skin,
+    hook_r + (hook_r + mag_pocket_d / 2 + mag_skin + 0.3) / sqrt(2)
+);
+mag_boss_d = 2 * (mag_inset - 0.6);
+mag_boss_h = mag_pocket_h + mag_floor;
+
+// Female pogo housing on the lid (ears at mid-height, insert from inside)
+fp_body_l = 12.5;
+fp_ear_l = 14.5;
+fp_w = 4.0;
+fp_h = 4.0;
+fp_ear_t = 1.0;
+fp_fit = 0.2;
+
+lid_t = fp_h;
 lid_pry_w = 10.0;
 lid_pry_d = 1.2;
 
@@ -136,27 +155,32 @@ if (part == 1) {
 }
 
 module adapter() {
-    union() {
-        difference() {
-            union() {
-                hook();
-                pcb_shell();
-                pin_sleeves();
-                prong_root_reinforcement();
-                grab_cylinder();
+    difference() {
+        union() {
+            difference() {
+                union() {
+                    hook();
+                    pcb_shell();
+                    pin_sleeves();
+                    prong_root_reinforcement();
+                    grab_cylinder();
+                }
+                pcb_cavity();
+                ble_cutout();
+                pin_through_holes();
+                prong_grab_relief();
             }
-            pcb_cavity();
-            ble_cutout();
-            pin_through_holes();
-            prong_grab_relief();
-            //lid_inner_snap_recesses();
+            isolator_ledges();
+            magnet_bosses_case();
         }
-        isolator_ledges();
+        magnet_pockets_case();
     }
     if (show_board_preview)
         board_preview();
     if (show_pin_preview)
         pin_preview();
+    if (show_magnet_preview)
+        magnet_preview_case();
 }
 
 module hook() {
@@ -428,6 +452,74 @@ module isolator_ledges() {
         cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
 }
 
+function magnet_positions() = [
+    [mag_inset, mag_inset],
+    [shell_l - mag_inset, mag_inset],
+    [mag_inset, shell_w - mag_inset],
+    [shell_l - mag_inset, shell_w - mag_inset]
+];
+
+module magnet_corner_2d(extra = 0) {
+    for (p = magnet_positions()) {
+        cx = p[0] < shell_l / 2 ? -extra : shell_l + extra;
+        cy = p[1] < shell_w / 2 ? -extra : shell_w + extra;
+        hull() {
+            translate([p[0], p[1]])
+                circle(d = mag_boss_d + 2 * extra);
+            translate([cx, cy])
+                circle(d = max(0.4, 2 * extra));
+        }
+    }
+}
+
+module magnet_bosses_case() {
+    z0 = hook_h + shell_h - mag_boss_h;
+    intersection() {
+        translate([shell_ox, shell_oy, z0])
+            rounded_cube([shell_l, shell_w, mag_boss_h], hook_r);
+        translate([shell_ox, shell_oy, z0 - eps])
+            linear_extrude(height = mag_boss_h + 2 * eps)
+                magnet_corner_2d();
+    }
+}
+
+module magnet_pockets_case() {
+    for (p = magnet_positions())
+        translate([
+            shell_ox + p[0],
+            shell_oy + p[1],
+            hook_h + shell_h - mag_pocket_h
+        ])
+            cylinder(h = mag_pocket_h + 1, d = mag_pocket_d);
+}
+
+module magnet_pockets_lid() {
+    for (p = magnet_positions())
+        translate([p[0], p[1], -eps])
+            cylinder(h = mag_pocket_h + eps, d = mag_pocket_d);
+}
+
+module magnet_disc() {
+    color([0.75, 0.78, 0.82, 0.95])
+        cylinder(h = mag_h, d = mag_d);
+}
+
+module magnet_preview_case() {
+    for (p = magnet_positions())
+        translate([
+            shell_ox + p[0],
+            shell_oy + p[1],
+            hook_h + shell_h - mag_h - 0.05
+        ])
+            magnet_disc();
+}
+
+module magnet_preview_lid() {
+    for (p = magnet_positions())
+        translate([p[0], p[1], 0.05])
+            magnet_disc();
+}
+
 module lid() {
     if (part == 1)
         lid_for_print();
@@ -437,66 +529,74 @@ module lid() {
 }
 
 module lid_for_print() {
-    translate([0, shell_w, lid_t])
+    translate([0, shell_w, fp_h])
         rotate([180, 0, 0])
             lid_body();
 }
 
 module lid_body() {
-    plug_l = shell_l - 2 * wall_inner - 2 * lid_inner_clear;
-    plug_w = shell_w - 2 * wall_inner - 2 * lid_inner_clear;
-
     difference() {
-        union() {
-            rounded_cube([shell_l, shell_w, lid_t], hook_r);
-
-            translate([wall + lid_inner_clear, wall + lid_inner_clear, -lid_inner_h])
-                difference() {
-                    rounded_cube([plug_l, plug_w, lid_inner_h + 0.4], 0.5);
-                    translate([lid_inner_t, lid_inner_t, -1])
-                        rounded_cube([
-                            plug_l - 2 * lid_inner_t,
-                            plug_w - 2 * lid_inner_t,
-                            lid_inner_h + 3
-                        ], 0.3);
-                }
-
-            //lid_inner_snaps(plug_l, plug_w);
-        }
+        rounded_cube([shell_l, shell_w, fp_h], hook_r);
+        lid_top_shave();
         lid_pry_notch();
+        magnet_pockets_lid();
+        female_pogo_pocket();
+    }
+    if (show_magnet_preview)
+        magnet_preview_lid();
+    if (show_pin_preview)
+        female_pogo_preview();
+}
+
+function female_pogo_center() = [shell_l / 2, shell_w / 2];
+
+module female_pogo_2d(len, wid) {
+    r = wid / 2;
+    dx = max(0, len / 2 - r);
+    hull() {
+        translate([-dx, 0]) circle(d = wid);
+        translate([dx, 0]) circle(d = wid);
     }
 }
 
-module lid_inner_snaps(plug_l, plug_w) {
-    x0 = (shell_l - lid_snap_w) / 2;
-    y0 = wall + lid_inner_clear;
-    z0 = -lid_inner_h + 0.15;
-
-    translate([x0, y0, z0])
-        snap_prism(lid_snap_w, -1, lid_snap_h, lid_snap_d);
-    translate([x0, y0 + plug_w, z0])
-        snap_prism(lid_snap_w, 1, lid_snap_h, lid_snap_d);
+module lid_top_shave() {
+    c = female_pogo_center();
+    translate([0, 0, lid_t])
+        linear_extrude(height = fp_h - lid_t + 1)
+            difference() {
+                translate([-1, -1])
+                    square([shell_l + 2, shell_w + 2]);
+                translate([c[0], c[1]])
+                    offset(r = fp_boss_wall)
+                        female_pogo_2d(fp_body_l + 2 * fp_fit, fp_w + 2 * fp_fit);
+            }
 }
 
-module lid_inner_snap_recesses() {
-    z0 = hook_h + shell_h - lid_inner_h + 0.15;
-    gw = lid_snap_w + 1.2;
-    gh = lid_snap_h + 0.25;
-    gd = lid_snap_d + 0.08;
-    gx = shell_ox + (shell_l - gw) / 2;
+module female_pogo_pocket() {
+    c = female_pogo_center();
+    bl = fp_body_l + 2 * fp_fit;
+    el = fp_ear_l + 2 * fp_fit;
+    w = fp_w + 2 * fp_fit;
+    ear_z2 = (fp_h + fp_ear_t) / 2;
 
-    translate([gx, shell_oy + wall, z0])
-        snap_prism(gw, -1, gh, gd);
-    translate([gx, shell_oy + shell_w - wall, z0])
-        snap_prism(gw, 1, gh, gd);
+    translate([c[0], c[1], -eps])
+        linear_extrude(height = ear_z2 + eps)
+            female_pogo_2d(el, w);
+    translate([c[0], c[1], ear_z2 - eps])
+        linear_extrude(height = fp_h - ear_z2 + 2 * eps)
+            female_pogo_2d(bl, w);
 }
 
-module snap_prism(len, y_dir, h, d) {
-    hull() {
-        translate([0, y_dir > 0 ? 0 : -0.02, 0])
-            cube([len, 0.02, h]);
-        translate([0, y_dir * d, h / 2])
-            cube([len, 0.02, 0.02]);
+module female_pogo_preview() {
+    c = female_pogo_center();
+    ear_z = (fp_h - fp_ear_t) / 2;
+    color([0.90, 0.75, 0.20, 0.95]) {
+        translate([c[0], c[1], 0])
+            linear_extrude(height = fp_h)
+                female_pogo_2d(fp_body_l, fp_w);
+        translate([c[0], c[1], ear_z])
+            linear_extrude(height = fp_ear_t)
+                female_pogo_2d(fp_ear_l, fp_w);
     }
 }
 

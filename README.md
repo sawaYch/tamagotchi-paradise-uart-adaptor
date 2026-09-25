@@ -44,17 +44,17 @@ Generate the printable wired adapter and lid:
 just wire
 ```
 
-Generate the AAA battery holder for the future wireless version:
+Generate the printable wireless adapter and lid:
 
 ```bash
-just wireless-3a-battery
+just wireless
 ```
 
 Generate both with `just all`.
 
 ## Models
 
-[Wired adapter](./models/wire/wire-adaptor.stl) · [Wired lid](./models/wire/wire-lid.stl) · [Wireless AAA battery holder](./models/wireless/wireless-3a-battery.stl)
+[Wired adapter](./models/wire/wire-adaptor.stl) · [Wired lid](./models/wire/wire-lid.stl) · [Wireless adapter](./models/wireless/wireless-adaptor.stl) · [Wireless lid](./models/wireless/wireless-lid.stl)
 
 ## Components
 
