@@ -3,22 +3,17 @@ set default-list := true
 [windows]
 set shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
-wire_scad := "models/wire/wire-adaptor.scad"
-wireless_scad := "models/wireless/wireless-adaptor.scad"
-
-# Verify that OpenSCAD is available
+# Verify that build123d is available
 check:
-    openscad --version
+    uv run python -c "import build123d; print(build123d.__version__)"
 
-# Generate the existing wired adapter and lid
+# Generate the wired adapter and lid
 wire:
-    openscad -D part=0 -D show_board_preview=false -D show_pin_preview=false -o models/wire/wire-adaptor.stl {{wire_scad}}
-    openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o models/wire/wire-lid.stl {{wire_scad}}
+    uv run python -m adaptor wire
 
 # Generate the wireless adapter and magnetic lid
 wireless:
-    openscad -D part=0 -D show_board_preview=false -D show_pin_preview=false -D show_magnet_preview=false -o models/wireless/wireless-adaptor.stl {{wireless_scad}}
-    openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -D show_magnet_preview=false -o models/wireless/wireless-lid.stl {{wireless_scad}}
+    uv run python -m adaptor wireless
 
 # Generate every printable model
 all: wire wireless

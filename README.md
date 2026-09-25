@@ -14,16 +14,24 @@
 
 This is a UART adaptor for connecting your personal computer to Tamagotchi Paradise via `USB Type-C` cable.
 
-## Install OpenSCAD
+Models are parametric [build123d](https://github.com/gumyr/build123d) scripts in `src/adaptor`.
 
-This project use OpenSCAD script to model the adaptor
+## Install uv
+
+[uv](https://docs.astral.sh/uv/) installs Python and the build123d dependency.
 
 ```bash
 # Windows
-winget install -e --id OpenSCAD.OpenSCAD
+winget install -e --id astral-sh.uv
 
 # MacOS
-brew install --cask openscad@snapshot
+brew install uv
+```
+
+Then, from this repository:
+
+```bash
+uv sync
 ```
 
 ## Install just

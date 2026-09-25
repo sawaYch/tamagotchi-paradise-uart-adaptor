@@ -1,0 +1,13 @@
+---
+description: Tamagotchi Paradise adaptor modeling conventions
+globs: src/adaptor/**/*.py
+alwaysApply: false
+---
+
+# Adaptor models
+
+The printable parts are build123d solids in `src/adaptor`. `shared.py` owns the imported hook, pogo pins, prong gussets, grab cylinder, and shell helpers. `wire.py` and `wireless.py` own the board pockets and lids.
+
+Exported STLs are the printable solids only. Do not include board, pogo-pin, or magnet preview geometry in those solids.
+
+Regenerate STLs with `just wire`, `just wireless`, or `just all`. Do not hand-edit files under `models/`.
