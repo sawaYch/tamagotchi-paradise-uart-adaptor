@@ -1,17 +1,17 @@
 // Tamagotchi Paradise wireless UART adapter
-// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + magnetic lid.
+// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + open-top power tray.
 
 $fn = 64;
 eps = 0.05;
 
 tolerance = 0.2;
-show_board_preview = true;
-show_pin_preview = true;
-show_magnet_preview = true;
+show_board_preview = false;
+show_pin_preview = false;
+show_magnet_preview = false;
 
 // 0 = adapter, 1 = lid, 2 = assembled
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 2;
+part = 1;
 
 // --- JDY-23 BLE 5.0 module with base plate (32.7 x 18.3 mm) ---
 pcb_l = 32.7;
@@ -54,8 +54,8 @@ headroom = 0.6;
 shell_extra = 2;
 
 // Extra pocket around the JDY-23 pin header for soldering TX/RX/GND/VCC wires
-pin_solder_clear = 6.0;   // along X, ahead of the header (toward pogo pins)
-side_wire_clear = 1.5;    // each Y side beyond fit tolerance
+pin_solder_clear = 6.0; // along X, ahead of the header (toward pogo pins)
+side_wire_clear = 1.5; // each Y side beyond fit tolerance
 
 // Bluetooth-symbol RF window at the antenna (+X) end
 ble_symbol_h = 9.0;
@@ -79,15 +79,14 @@ mag_pocket_d = mag_d + mag_fit;
 mag_pocket_h = mag_h + 0.15;
 mag_floor = 0.7;
 mag_skin = 0.8;
-mag_wall_skin = 1.2;
-mag_inset = max(
-    mag_pocket_d / 2 + mag_wall_skin,
-    hook_r + (hook_r + mag_pocket_d / 2 + mag_skin + 0.3) / sqrt(2)
-);
-mag_boss_d = 2 * (mag_inset - 0.6);
+// Keep only a thin outer skin so pads sit in the corner/wall and
+// leave the cavity center open for soldering / chip install.
+mag_wall_skin = 1;
+mag_inset = mag_pocket_d / 2 + mag_wall_skin;
+mag_boss_d = 2 * (mag_inset - 0.4);
 mag_boss_h = mag_pocket_h + mag_floor;
 
-// Female pogo housing on the lid (ears at mid-height, insert from inside)
+// Female pogo housing in tray floor (ears at mid-height, insert from adapter side)
 fp_body_l = 12.5;
 fp_ear_l = 14.5;
 fp_w = 4.0;
@@ -95,9 +94,50 @@ fp_h = 4.0;
 fp_ear_t = 1.0;
 fp_fit = 0.2;
 
-lid_t = fp_h;
-lid_pry_w = 10.0;
-lid_pry_d = 1.2;
+// --- Power tray components ---
+// 102535 LiPo 1000 mAh
+batt_l = 35.0;
+batt_w = 25.0;
+batt_t = 10.0;
+// MiniUPS-3.3V
+ups_l = 35.0;
+ups_w = 21.0;
+ups_t = 5.6;
+// SS-12D10-G5 slide switch
+sw_l = 12.7;
+sw_w = 6.7;
+sw_h = 11.3;
+sw_body_h = 6.5;
+sw_act_travel = 2.2;
+sw_act_l = 11.5;
+sw_act_h = 4.2;
+// USB-C window (MiniUPS bottom-left corner, after 180° place on +X / -Y)
+usbc_w = 9.5;
+usbc_h = 3.6;
+usbc_y_inset = 4.8;
+usbc_z_inset = 2.8;
+
+comp_fit = 0.4;
+// Battery stands on its thin face so tray width can match the adapter:
+// footprint 35(L)×10(T), height 25(W) — makes the lid taller.
+batt_bay_l = batt_l + comp_fit;
+batt_bay_w = batt_t + comp_fit;
+batt_bay_h = batt_w + comp_fit;
+ups_pl = ups_l + comp_fit;
+ups_pw = ups_w + comp_fit;
+ups_pt = ups_t + 0.2;
+sw_pl = sw_l + 0.4;
+sw_pw = sw_w + 0.3;
+
+tray_roof = 0.8;
+tray_floor = fp_h + tray_roof;
+tray_lip = 2.0;
+tray_gap_sw = 0.6;
+tray_inner_l = max(batt_bay_l, ups_pl) + 1.0;
+tray_cavity_h = batt_bay_h + ups_pt + tray_lip;
+tray_h = tray_floor + tray_cavity_h;
+pogo_wire_slot_w = 2.2;
+pogo_wire_slot_l = 6.0;
 
 // --- Hook reinforcement (imported Basic_rev2.stl) ---
 prong_root_y = -2.5;
@@ -134,6 +174,19 @@ shell_w = shell_y1 - shell_y0;
 shell_ox = shell_x0 + pcb_insert_x_offset;
 shell_oy = shell_y0 + pcb_insert_y_offset;
 
+tray_l = max(tray_inner_l + 2 * wall, shell_l);
+// Match adapter width (no Y overhang); height grows instead
+tray_w = shell_w;
+mate_ox = 0;
+mate_oy = 0;
+// Stack flush to the +X free wall so MiniUPS USB-C reaches the cutout
+batt_x = tray_l - wall - batt_bay_l;
+batt_y = wall;
+ups_x = tray_l - wall - ups_pl;
+ups_y = (tray_w - ups_pw) / 2;
+sw_x = wall + (tray_l - 2 * wall - sw_pl) / 2;
+sw_y = wall + batt_bay_w + tray_gap_sw;
+
 // Board sits past the solder pocket so the pin header is not against the wall
 board_x0 = hook_x0 + wall + pin_solder_clear;
 board_y0 = -pcb_w / 2;
@@ -146,473 +199,568 @@ pcb_z = pin_floor_z + board_lift;
 ledge_z = pin_floor_z + solder_well_h - ledge_h;
 
 if (part == 1) {
-    lid();
+  lid();
 } else {
-    adapter();
-    if (part == 2)
-        color([0.25, 0.55, 0.85, 0.72])
-            lid();
+  adapter();
+  if (part == 2)
+    color([0.25, 0.55, 0.85, 0.72])
+      lid();
 }
 
 module adapter() {
-    difference() {
+  difference() {
+    union() {
+      difference() {
         union() {
-            difference() {
-                union() {
-                    hook();
-                    pcb_shell();
-                    pin_sleeves();
-                    prong_root_reinforcement();
-                    grab_cylinder();
-                }
-                pcb_cavity();
-                ble_cutout();
-                pin_through_holes();
-                prong_grab_relief();
-            }
-            isolator_ledges();
-            magnet_bosses_case();
+          hook();
+          pcb_shell();
+          pin_sleeves();
+          prong_root_reinforcement();
+          grab_cylinder();
         }
-        magnet_pockets_case();
+        pcb_cavity();
+        ble_cutout();
+        pin_through_holes();
+        prong_grab_relief();
+      }
+      isolator_ledges();
+      magnet_bosses_case();
     }
-    if (show_board_preview)
-        board_preview();
-    if (show_pin_preview)
-        pin_preview();
-    if (show_magnet_preview)
-        magnet_preview_case();
+    magnet_pockets_case();
+  }
+  if (show_board_preview)
+    board_preview();
+  if (show_pin_preview)
+    pin_preview();
+  if (show_magnet_preview)
+    magnet_preview_case();
 }
 
 module hook() {
-    import(stl_file, convexity = 16);
+  import(stl_file, convexity=16);
 }
 
 module pcb_shell() {
-    translate([shell_ox, shell_oy, hook_h])
-        rounded_cube([shell_l, shell_w, shell_h], hook_r);
+  translate([shell_ox, shell_oy, hook_h])
+    rounded_cube([shell_l, shell_w, shell_h], hook_r);
 
-    translate([hook_x0, hook_y0, hook_h - 0.5])
-        rounded_cube([hook_l, hook_w, 0.5 + eps], hook_r);
+  translate([hook_x0, hook_y0, hook_h - 0.5])
+    rounded_cube([hook_l, hook_w, 0.5 + eps], hook_r);
 }
 
 module pcb_cavity() {
-    translate([shell_ox + wall_inner, shell_oy + wall_inner, hook_h + wall])
-        rounded_cube([
-            shell_l - 2 * wall_inner,
-            shell_w - 2 * wall_inner,
-            shell_h - wall + 1
-        ], 0.6);
+  translate([shell_ox + wall_inner, shell_oy + wall_inner, hook_h + wall])
+    rounded_cube(
+      [
+        shell_l - 2 * wall_inner,
+        shell_w - 2 * wall_inner,
+        shell_h - wall + 1,
+      ], 0.6
+    );
 }
 
 module ble_cutout() {
-    depth = wall + 6;
-    // Antenna keep-out sits at the free (+X) end of the board
-    x0 = shell_ox + shell_l + 0.2;
-    z0 = pcb_z + pcb_thickness + module_h / 2;
+  depth = wall + 6;
+  // Antenna keep-out sits at the free (+X) end of the board
+  x0 = shell_ox + shell_l + 0.2;
+  z0 = pcb_z + pcb_thickness + module_h / 2;
 
-    translate([x0, 0, z0])
-        rotate([0, -90, 0])
-            linear_extrude(height = depth)
-                rotate([0, 0, 90])
-                    bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
+  translate([x0, 0, z0])
+    rotate([0, -90, 0])
+      linear_extrude(height=depth)
+        rotate([0, 0, 90])
+          bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
 }
 
 // Classic Bluetooth rune: vertical stem, right-pointing B bowls, left X arms.
 // Support bridges keep the two B-bowl islands attached for printing.
 module bluetooth_symbol_2d(height, stroke) {
-    h = height;
-    t = stroke;
-    tip_x = h * 0.40;
-    mid_y = h * 0.06;
-    support_w = max(0.9, t * 0.75);
-    support_len = t + h * 0.28;
+  h = height;
+  t = stroke;
+  tip_x = h * 0.40;
+  mid_y = h * 0.06;
+  support_w = max(0.9, t * 0.75);
+  support_len = t + h * 0.28;
 
-    difference() {
-        union() {
-            bluetooth_bar([0, h / 2], [0, -h / 2], t);
-            bluetooth_bar([0, h / 2], [tip_x, mid_y], t);
-            bluetooth_bar([tip_x, mid_y], [0, -mid_y], t);
-            bluetooth_bar([0, mid_y], [tip_x, -mid_y], t);
-            bluetooth_bar([tip_x, -mid_y], [0, -h / 2], t);
-            bluetooth_bar([-tip_x, h * 0.34], [0, 0], t);
-            bluetooth_bar([-tip_x, -h * 0.34], [0, 0], t);
-        }
-        // Leave solid bridges perpendicular to the outer hypotenuses
-        bluetooth_perp_support(0, h / 2, tip_x, mid_y, support_len, support_w);
-        bluetooth_perp_support(tip_x, -mid_y, 0, -h / 2, support_len, support_w);
+  difference() {
+    union() {
+      bluetooth_bar([0, h / 2], [0, -h / 2], t);
+      bluetooth_bar([0, h / 2], [tip_x, mid_y], t);
+      bluetooth_bar([tip_x, mid_y], [0, -mid_y], t);
+      bluetooth_bar([0, mid_y], [tip_x, -mid_y], t);
+      bluetooth_bar([tip_x, -mid_y], [0, -h / 2], t);
+      bluetooth_bar([-tip_x, h * 0.34], [0, 0], t);
+      bluetooth_bar([-tip_x, -h * 0.34], [0, 0], t);
     }
+    // Leave solid bridges perpendicular to the outer hypotenuses
+    bluetooth_perp_support(0, h / 2, tip_x, mid_y, support_len, support_w);
+    bluetooth_perp_support(tip_x, -mid_y, 0, -h / 2, support_len, support_w);
+  }
 }
 
 module bluetooth_perp_support(ax, ay, bx, by, len, w) {
-    mx = (ax + bx) / 2;
-    my = (ay + by) / 2;
-    dx = bx - ax;
-    dy = by - ay;
-    nlen = sqrt(dx * dx + dy * dy);
-    nx = -dy / nlen;
-    ny = dx / nlen;
-    bluetooth_bar(
-        [mx - nx * len / 2, my - ny * len / 2],
-        [mx + nx * len / 2, my + ny * len / 2],
-        w
-    );
+  mx = (ax + bx) / 2;
+  my = (ay + by) / 2;
+  dx = bx - ax;
+  dy = by - ay;
+  nlen = sqrt(dx * dx + dy * dy);
+  nx = -dy / nlen;
+  ny = dx / nlen;
+  bluetooth_bar(
+    [mx - nx * len / 2, my - ny * len / 2],
+    [mx + nx * len / 2, my + ny * len / 2],
+    w
+  );
 }
 
 module bluetooth_bar(a, b, t) {
-    hull() {
-        translate(a) circle(d = t, $fn = 24);
-        translate(b) circle(d = t, $fn = 24);
-    }
+  hull() {
+    translate(a) circle(d=t, $fn=24);
+    translate(b) circle(d=t, $fn=24);
+  }
 }
 
 module pin_sleeves() {
-    h = pin_floor_z - pin_sleeve_z + 0.2;
-    for (x = pin_xs)
-        translate([x, 0, pin_sleeve_z])
-            cylinder(h = h, d = pin_sleeve_od);
+  h = pin_floor_z - pin_sleeve_z + 0.2;
+  for (x = pin_xs)
+    translate([x, 0, pin_sleeve_z])
+      cylinder(h=h, d=pin_sleeve_od);
 }
 
 module pin_through_holes() {
-    for (x = pin_xs) {
-        translate([x, 0, -1])
-            cylinder(h = pin_floor_z + 2, d = pin_barrel_hole);
-        translate([x, 0, pin_seat_z])
-            cylinder(h = pin_flange_h + 1, d = pin_flange_hole);
-        translate([x, 0, -0.2])
-            cylinder(h = 1.2, d1 = pin_barrel_hole + 0.8, d2 = pin_barrel_hole);
-    }
+  for (x = pin_xs) {
+    translate([x, 0, -1])
+      cylinder(h=pin_floor_z + 2, d=pin_barrel_hole);
+    translate([x, 0, pin_seat_z])
+      cylinder(h=pin_flange_h + 1, d=pin_flange_hole);
+    translate([x, 0, -0.2])
+      cylinder(h=1.2, d1=pin_barrel_hole + 0.8, d2=pin_barrel_hole);
+  }
 }
 
 module pin_preview() {
-    for (x = pin_xs)
-        translate([x, 0, pin_seat_z])
-            pogo_pin();
+  for (x = pin_xs)
+    translate([x, 0, pin_seat_z])
+      pogo_pin();
 }
 
 module pogo_pin() {
-    color([0.90, 0.75, 0.20, 0.95]) {
-        cylinder(h = pin_flange_h, d = pin_flange_d);
-        translate([0, 0, -pin_barrel_h])
-            cylinder(h = pin_barrel_h, d = pin_barrel_d);
-        translate([0, 0, -pin_barrel_h - pin_tip_h + pin_tip_d / 2]) {
-            cylinder(h = pin_tip_h - pin_tip_d / 2, d = pin_tip_d);
-            sphere(d = pin_tip_d);
-        }
+  color([0.90, 0.75, 0.20, 0.95]) {
+    cylinder(h=pin_flange_h, d=pin_flange_d);
+    translate([0, 0, -pin_barrel_h])
+      cylinder(h=pin_barrel_h, d=pin_barrel_d);
+    translate([0, 0, -pin_barrel_h - pin_tip_h + pin_tip_d / 2]) {
+      cylinder(h=pin_tip_h - pin_tip_d / 2, d=pin_tip_d);
+      sphere(d=pin_tip_d);
     }
+  }
 }
 
 module board_preview() {
-    // Antenna / module toward +X (free end); 6-pin header toward -X (near pogo pins)
-    header_x = board_x0 + 1.2;
-    header_body_w = 5 * pad_pitch_y + 2.2;
-    header_body_l = 2.5;
-    header_body_h = 2.5;
-    module_x = board_x0 + pcb_l - module_l - 1.2;
-    module_y = -module_w / 2;
-    led_d = 1.6;
+  // Antenna / module toward +X (free end); 6-pin header toward -X (near pogo pins)
+  header_x = board_x0 + 1.2;
+  header_body_w = 5 * pad_pitch_y + 2.2;
+  header_body_l = 2.5;
+  header_body_h = 2.5;
+  module_x = board_x0 + pcb_l - module_l - 1.2;
+  module_y = -module_w / 2;
+  led_d = 1.6;
 
-    translate([pcb_insert_x_offset, pcb_insert_y_offset, pcb_z])
-        rotate([0, 0, board_preview_angle])
-            union() {
-                // Carrier PCB
-                color([0.12, 0.42, 0.22, 0.90])
-                    translate([board_x0, board_y0, 0])
-                        cube([pcb_l, pcb_w, pcb_thickness]);
+  translate([pcb_insert_x_offset, pcb_insert_y_offset, pcb_z])
+    rotate([0, 0, board_preview_angle])
+      union() {
+        // Carrier PCB
+        color([0.12, 0.42, 0.22, 0.90])
+          translate([board_x0, board_y0, 0])
+            cube([pcb_l, pcb_w, pcb_thickness]);
 
-                // Antenna keep-out silkscreen near free end
-                color([0.92, 0.92, 0.88, 0.55])
-                    translate([board_x0 + pcb_l - 6.5, board_y0 + 1.0, pcb_thickness])
-                        cube([5.0, pcb_w - 2.0, 0.05]);
+        // Antenna keep-out silkscreen near free end
+        color([0.92, 0.92, 0.88, 0.55])
+          translate([board_x0 + pcb_l - 6.5, board_y0 + 1.0, pcb_thickness])
+            cube([5.0, pcb_w - 2.0, 0.05]);
 
-                // JDY-23 SMT module
-                color([0.10, 0.10, 0.10, 0.96])
-                    translate([module_x, module_y, pcb_thickness])
-                        cube([module_l, module_w, module_h]);
+        // JDY-23 SMT module
+        color([0.10, 0.10, 0.10, 0.96])
+          translate([module_x, module_y, pcb_thickness])
+            cube([module_l, module_w, module_h]);
 
-                // Shield window / RF marking
-                color([0.55, 0.55, 0.58, 0.90])
-                    translate([
-                        module_x + module_l - 5.2,
-                        -3.0,
-                        pcb_thickness + module_h
-                    ])
-                        cube([3.8, 6.0, 0.08]);
+        // Shield window / RF marking
+        color([0.55, 0.55, 0.58, 0.90])
+          translate(
+            [
+              module_x + module_l - 5.2,
+              -3.0,
+              pcb_thickness + module_h,
+            ]
+          )
+            cube([3.8, 6.0, 0.08]);
 
-                // Status LED
-                color([0.15, 0.85, 0.30, 0.95])
-                    translate([
-                        header_x + header_body_l + 2.0,
-                        pcb_w / 2 - 2.2,
-                        pcb_thickness
-                    ])
-                        cylinder(h = 0.7, d = led_d);
+        // Status LED
+        color([0.15, 0.85, 0.30, 0.95])
+          translate(
+            [
+              header_x + header_body_l + 2.0,
+              pcb_w / 2 - 2.2,
+              pcb_thickness,
+            ]
+          )
+            cylinder(h=0.7, d=led_d);
 
-                // 6-pin 2.54 mm header (STATE, RXD, TXD, GND, VCC, EN)
-                color([0.12, 0.12, 0.12, 0.96])
-                    translate([
-                        header_x,
-                        -header_body_w / 2,
-                        pcb_thickness
-                    ])
-                        cube([header_body_l, header_body_w, header_body_h]);
+        // 6-pin 2.54 mm header (STATE, RXD, TXD, GND, VCC, EN)
+        color([0.12, 0.12, 0.12, 0.96])
+          translate(
+            [
+              header_x,
+              -header_body_w / 2,
+              pcb_thickness,
+            ]
+          )
+            cube([header_body_l, header_body_w, header_body_h]);
 
-                for (p = [0 : 5]) {
-                    py = (2.5 - p) * pad_pitch_y;
-                    pin_col =
-                        p == 1 ? [0.35, 0.72, 0.95, 0.95] :
-                        p == 2 ? [0.25, 0.85, 0.40, 0.95] :
-                        p == 3 ? [0.55, 0.32, 0.16, 0.95] :
-                        p == 4 ? [0.90, 0.20, 0.18, 0.95] :
-                                 [0.82, 0.68, 0.18, 0.92];
+        for (p = [0:5]) {
+          py = (2.5 - p) * pad_pitch_y;
+          pin_col =
+            p == 1 ? [0.35, 0.72, 0.95, 0.95]
+            : p == 2 ? [0.25, 0.85, 0.40, 0.95]
+            : p == 3 ? [0.55, 0.32, 0.16, 0.95]
+            : p == 4 ? [0.90, 0.20, 0.18, 0.95]
+            : [0.82, 0.68, 0.18, 0.92];
 
-                    translate([
-                        header_x + header_body_l / 2,
-                        py,
-                        pcb_thickness + header_body_h
-                    ])
-                        color(pin_col)
-                            cylinder(h = header_h - header_body_h, d = 0.64);
-                }
-            }
+          translate(
+            [
+              header_x + header_body_l / 2,
+              py,
+              pcb_thickness + header_body_h,
+            ]
+          )
+            color(pin_col)
+              cylinder(h=header_h - header_body_h, d=0.64);
+        }
+      }
 }
 
 module prong_root_reinforcement() {
-    gusset_tip_w = 0.4;
-    gusset_root_h = 0.55;
-    gusset_tip_h = 0.3;
+  gusset_tip_w = 0.4;
+  gusset_root_h = 0.55;
+  gusset_tip_h = 0.3;
 
-    hull() {
-        translate([
-            -9.0 - prong_root_extra,
-            prong_root_y,
-            -0.15
-        ])
-            cube([
-                prong_root_extra + prong_root_overlap,
-                prong_root_w,
-                gusset_root_h
-            ]);
-        translate([
-            -9.0 - prong_root_overlap,
-            prong_root_y,
-            -prong_root_depth
-        ])
-            cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
-    }
+  hull() {
+    translate(
+      [
+        -9.0 - prong_root_extra,
+        prong_root_y,
+        -0.15,
+      ]
+    )
+      cube(
+        [
+          prong_root_extra + prong_root_overlap,
+          prong_root_w,
+          gusset_root_h,
+        ]
+      );
+    translate(
+      [
+        -9.0 - prong_root_overlap,
+        prong_root_y,
+        -prong_root_depth,
+      ]
+    )
+      cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
+  }
 
-    hull() {
-        translate([
-            -3.0 - prong_root_overlap,
-            prong_root_y,
-            -0.15
-        ])
-            cube([
-                prong_root_extra + prong_root_overlap,
-                prong_root_w,
-                gusset_root_h
-            ]);
-        translate([
-            -3.0 - gusset_tip_w + prong_root_overlap,
-            prong_root_y,
-            -prong_root_depth
-        ])
-            cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
-    }
+  hull() {
+    translate(
+      [
+        -3.0 - prong_root_overlap,
+        prong_root_y,
+        -0.15,
+      ]
+    )
+      cube(
+        [
+          prong_root_extra + prong_root_overlap,
+          prong_root_w,
+          gusset_root_h,
+        ]
+      );
+    translate(
+      [
+        -3.0 - gusset_tip_w + prong_root_overlap,
+        prong_root_y,
+        -prong_root_depth,
+      ]
+    )
+      cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
+  }
 }
 
 module grab_cylinder() {
-    translate([grab_cyl_x, -grab_cyl_len / 2, grab_cyl_z])
-        rotate([-90, 0, 0])
-            cylinder(h = grab_cyl_len, d = grab_cyl_d);
+  translate([grab_cyl_x, -grab_cyl_len / 2, grab_cyl_z])
+    rotate([-90, 0, 0])
+      cylinder(h=grab_cyl_len, d=grab_cyl_d);
 }
 
 module prong_grab_relief() {
-    m = 0.3;
-    z_span = 1.0;
-    y_span = 5.6;
-    translate([prong_grab_face_l - prong_grab_shave, -y_span / 2, prong_grab_z - z_span / 2])
-        cube([prong_grab_shave + m, y_span, z_span]);
-    translate([prong_grab_face_r - m, -y_span / 2, prong_grab_z - z_span / 2])
-        cube([prong_grab_shave + m, y_span, z_span]);
+  m = 0.3;
+  z_span = 1.0;
+  y_span = 5.6;
+  translate([prong_grab_face_l - prong_grab_shave, -y_span / 2, prong_grab_z - z_span / 2])
+    cube([prong_grab_shave + m, y_span, z_span]);
+  translate([prong_grab_face_r - m, -y_span / 2, prong_grab_z - z_span / 2])
+    cube([prong_grab_shave + m, y_span, z_span]);
 }
 
 module isolator_ledges() {
-    overlap = 0.3;
-    translate([
-        shell_ox + wall - overlap,
-        shell_oy + wall - overlap,
-        ledge_z
-    ])
-        cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
-    translate([
-        shell_ox + wall - overlap,
-        shell_oy + shell_w - wall - ledge_w,
-        ledge_z
-    ])
-        cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
+  overlap = 0.3;
+  translate(
+    [
+      shell_ox + wall - overlap,
+      shell_oy + wall - overlap,
+      ledge_z,
+    ]
+  )
+    cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
+  translate(
+    [
+      shell_ox + wall - overlap,
+      shell_oy + shell_w - wall - ledge_w,
+      ledge_z,
+    ]
+  )
+    cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
 }
 
-function magnet_positions() = [
+function magnet_positions() =
+  [
     [mag_inset, mag_inset],
     [shell_l - mag_inset, mag_inset],
     [mag_inset, shell_w - mag_inset],
-    [shell_l - mag_inset, shell_w - mag_inset]
-];
+    [shell_l - mag_inset, shell_w - mag_inset],
+  ];
 
 module magnet_corner_2d(extra = 0) {
-    for (p = magnet_positions()) {
-        cx = p[0] < shell_l / 2 ? -extra : shell_l + extra;
-        cy = p[1] < shell_w / 2 ? -extra : shell_w + extra;
-        hull() {
-            translate([p[0], p[1]])
-                circle(d = mag_boss_d + 2 * extra);
-            translate([cx, cy])
-                circle(d = max(0.4, 2 * extra));
-        }
+  for (p = magnet_positions()) {
+    cx = p[0] < shell_l / 2 ? -extra : shell_l + extra;
+    cy = p[1] < shell_w / 2 ? -extra : shell_w + extra;
+    hull() {
+      translate([p[0], p[1]])
+        circle(d=mag_boss_d + 2 * extra);
+      translate([cx, cy])
+        circle(d=max(0.4, 2 * extra));
     }
+  }
 }
 
 module magnet_bosses_case() {
-    z0 = hook_h + shell_h - mag_boss_h;
-    intersection() {
-        translate([shell_ox, shell_oy, z0])
-            rounded_cube([shell_l, shell_w, mag_boss_h], hook_r);
-        translate([shell_ox, shell_oy, z0 - eps])
-            linear_extrude(height = mag_boss_h + 2 * eps)
-                magnet_corner_2d();
-    }
+  z0 = hook_h + shell_h - mag_boss_h;
+  intersection() {
+    translate([shell_ox, shell_oy, z0])
+      rounded_cube([shell_l, shell_w, mag_boss_h], hook_r);
+    translate([shell_ox, shell_oy, z0 - eps])
+      linear_extrude(height=mag_boss_h + 2 * eps)
+        magnet_corner_2d();
+  }
 }
 
 module magnet_pockets_case() {
-    for (p = magnet_positions())
-        translate([
-            shell_ox + p[0],
-            shell_oy + p[1],
-            hook_h + shell_h - mag_pocket_h
-        ])
-            cylinder(h = mag_pocket_h + 1, d = mag_pocket_d);
-}
-
-module magnet_pockets_lid() {
-    for (p = magnet_positions())
-        translate([p[0], p[1], -eps])
-            cylinder(h = mag_pocket_h + eps, d = mag_pocket_d);
+  for (p = magnet_positions())
+    translate(
+      [
+        shell_ox + p[0],
+        shell_oy + p[1],
+        hook_h + shell_h - mag_pocket_h,
+      ]
+    )
+      cylinder(h=mag_pocket_h + 1, d=mag_pocket_d);
 }
 
 module magnet_disc() {
-    color([0.75, 0.78, 0.82, 0.95])
-        cylinder(h = mag_h, d = mag_d);
+  color([0.75, 0.78, 0.82, 0.95])
+    cylinder(h=mag_h, d=mag_d);
 }
 
 module magnet_preview_case() {
-    for (p = magnet_positions())
-        translate([
-            shell_ox + p[0],
-            shell_oy + p[1],
-            hook_h + shell_h - mag_h - 0.05
-        ])
-            magnet_disc();
+  for (p = magnet_positions())
+    translate(
+      [
+        shell_ox + p[0],
+        shell_oy + p[1],
+        hook_h + shell_h - mag_h - 0.05,
+      ]
+    )
+      magnet_disc();
 }
 
 module magnet_preview_lid() {
-    for (p = magnet_positions())
-        translate([p[0], p[1], 0.05])
-            magnet_disc();
+  for (p = magnet_positions())
+    translate([mate_ox + p[0], mate_oy + p[1], 0.05])
+      magnet_disc();
 }
 
 module lid() {
-    if (part == 1)
-        lid_for_print();
-    else
-        translate([shell_ox, shell_oy, hook_h + shell_h])
-            lid_body();
+  if (part == 1)
+    lid_for_print();
+  else
+    translate([shell_ox - mate_ox, shell_oy - mate_oy, hook_h + shell_h])
+      lid_body();
 }
 
 module lid_for_print() {
-    translate([0, shell_w, fp_h])
-        rotate([180, 0, 0])
-            lid_body();
+  translate([0, tray_w, tray_h])
+    rotate([180, 0, 0])
+      lid_body();
 }
 
 module lid_body() {
-    difference() {
-        rounded_cube([shell_l, shell_w, fp_h], hook_r);
-        lid_top_shave();
-        lid_pry_notch();
-        magnet_pockets_lid();
-        female_pogo_pocket();
-    }
-    if (show_magnet_preview)
-        magnet_preview_lid();
-    if (show_pin_preview)
-        female_pogo_preview();
+  difference() {
+    rounded_cube([tray_l, tray_w, tray_h], hook_r);
+    tray_cavity();
+    magnet_pockets_lid();
+    female_pogo_pocket();
+    switch_actuator_slot();
+    usbc_window();
+  }
+  if (show_magnet_preview)
+    magnet_preview_lid();
+  if (show_pin_preview)
+    female_pogo_preview();
+  if (show_board_preview)
+    tray_component_preview();
 }
 
-function female_pogo_center() = [shell_l / 2, shell_w / 2];
+function female_pogo_center() =
+  [mate_ox + shell_l / 2, mate_oy + shell_w / 2];
 
 module female_pogo_2d(len, wid) {
-    r = wid / 2;
-    dx = max(0, len / 2 - r);
-    hull() {
-        translate([-dx, 0]) circle(d = wid);
-        translate([dx, 0]) circle(d = wid);
-    }
+  r = wid / 2;
+  dx = max(0, len / 2 - r);
+  hull() {
+    translate([-dx, 0]) circle(d=wid);
+    translate([dx, 0]) circle(d=wid);
+  }
 }
 
-module lid_top_shave() {
-    c = female_pogo_center();
-    translate([0, 0, lid_t])
-        linear_extrude(height = fp_h - lid_t + 1)
-            difference() {
-                translate([-1, -1])
-                    square([shell_l + 2, shell_w + 2]);
-                translate([c[0], c[1]])
-                    offset(r = fp_boss_wall)
-                        female_pogo_2d(fp_body_l + 2 * fp_fit, fp_w + 2 * fp_fit);
-            }
+module tray_cavity() {
+  translate([wall, wall, tray_floor])
+    rounded_cube(
+      [
+        tray_l - 2 * wall,
+        tray_w - 2 * wall,
+        tray_cavity_h + 1,
+      ],
+      0.6
+    );
+}
+
+module magnet_pockets_lid() {
+  for (p = magnet_positions())
+    translate([mate_ox + p[0], mate_oy + p[1], -eps])
+      cylinder(h=mag_pocket_h + eps, d=mag_pocket_d);
 }
 
 module female_pogo_pocket() {
-    c = female_pogo_center();
-    bl = fp_body_l + 2 * fp_fit;
-    el = fp_ear_l + 2 * fp_fit;
-    w = fp_w + 2 * fp_fit;
-    ear_z2 = (fp_h + fp_ear_t) / 2;
+  c = female_pogo_center();
+  bl = fp_body_l + 2 * fp_fit;
+  el = fp_ear_l + 2 * fp_fit;
+  w = fp_w + 2 * fp_fit;
+  ear_z2 = (fp_h + fp_ear_t) / 2;
 
-    translate([c[0], c[1], -eps])
-        linear_extrude(height = ear_z2 + eps)
-            female_pogo_2d(el, w);
-    translate([c[0], c[1], ear_z2 - eps])
-        linear_extrude(height = fp_h - ear_z2 + 2 * eps)
-            female_pogo_2d(bl, w);
+  // Blind pocket: opens toward the adapter only; tray_roof seals the cavity side
+  translate([c[0], c[1], -eps])
+    linear_extrude(height=ear_z2 + eps)
+      female_pogo_2d(el, w);
+  translate([c[0], c[1], ear_z2 - eps])
+    linear_extrude(height=fp_h - ear_z2 + eps)
+      female_pogo_2d(bl, w);
+}
+
+module pogo_wire_slot() {
+  c = female_pogo_center();
+  translate(
+    [
+      c[0] + fp_body_l / 2 - 0.5,
+      c[1] - pogo_wire_slot_w / 2,
+      fp_h - eps,
+    ]
+  )
+    cube([pogo_wire_slot_l, pogo_wire_slot_w, tray_roof + 2 * eps]);
+}
+
+module switch_actuator_slot() {
+  travel_pad = sw_act_travel;
+  ax = sw_x + (sw_pl - sw_act_l) / 2 - travel_pad / 2;
+  az = tray_floor + (min(sw_body_h, batt_bay_h) - sw_act_h) / 2;
+  translate([ax, tray_w - wall - eps, az])
+    cube([sw_act_l + travel_pad, wall + 2 * eps, sw_act_h]);
+}
+
+module usbc_window() {
+  // After 180° placement, board USB-C (local min-X/min-Y) sits on +X / -Y
+  uy = ups_y + usbc_y_inset - usbc_w / 2;
+  uz = tray_floor + batt_bay_h + usbc_z_inset - usbc_h / 2;
+  translate([tray_l - wall - eps, uy, uz])
+    cube([wall + 2 * eps, usbc_w, usbc_h]);
 }
 
 module female_pogo_preview() {
-    c = female_pogo_center();
-    ear_z = (fp_h - fp_ear_t) / 2;
-    color([0.90, 0.75, 0.20, 0.95]) {
-        translate([c[0], c[1], 0])
-            linear_extrude(height = fp_h)
-                female_pogo_2d(fp_body_l, fp_w);
-        translate([c[0], c[1], ear_z])
-            linear_extrude(height = fp_ear_t)
-                female_pogo_2d(fp_ear_l, fp_w);
-    }
+  c = female_pogo_center();
+  ear_z = (fp_h - fp_ear_t) / 2;
+  color([0.90, 0.75, 0.20, 0.95]) {
+    translate([c[0], c[1], 0])
+      linear_extrude(height=fp_h)
+        female_pogo_2d(fp_body_l, fp_w);
+    translate([c[0], c[1], ear_z])
+      linear_extrude(height=fp_ear_t)
+        female_pogo_2d(fp_ear_l, fp_w);
+  }
 }
 
-module lid_pry_notch() {
-    translate([shell_l / 2, shell_w + 0.2, lid_t])
-        rotate([0, 90, 0])
-            cylinder(h = lid_pry_w, d = lid_pry_d * 2, center = true);
+module tray_component_preview() {
+  // Battery upright on thin face: 35×10 footprint, 25 tall
+  color([0.15, 0.15, 0.18, 0.85])
+    translate([batt_x + comp_fit / 2, batt_y + comp_fit / 2, tray_floor])
+      cube([batt_l, batt_t, batt_w]);
+
+  // MiniUPS: rotate 180° so local bottom-left USB-C lands on +X / -Y
+  color([0.12, 0.45, 0.22, 0.90])
+    translate([ups_x + ups_pl, ups_y + ups_pw, tray_floor + batt_bay_h])
+      rotate([0, 0, 180])
+        cube([ups_l, ups_w, ups_t]);
+
+  // USB-C shell hint on the free end
+  color([0.75, 0.75, 0.78, 0.95])
+    translate(
+      [
+        tray_l - wall - 1.0,
+        ups_y + usbc_y_inset - 4.4,
+        tray_floor + batt_bay_h + usbc_z_inset - 1.5,
+      ]
+    )
+      cube([7.0, 8.8, 3.0]);
+
+  // SS-12D10-G5 body + actuator stub
+  color([0.10, 0.10, 0.10, 0.92]) {
+    translate([sw_x + 0.2, sw_y + 0.15, tray_floor])
+      cube([sw_l, sw_w, sw_body_h]);
+    translate(
+      [
+        sw_x + (sw_pl - 4.0) / 2,
+        tray_w - wall - 0.2,
+        tray_floor + (sw_body_h - 3.0) / 2,
+      ]
+    )
+      cube([4.0, wall + 1.5, 3.0]);
+  }
 }
 
 module rounded_cube(size, r) {
-    x = size[0];
-    y = size[1];
-    z = size[2];
-    rr = min(r, x / 2 - 0.05, y / 2 - 0.05);
-    linear_extrude(height = z)
-        translate([rr, rr])
-            offset(r = rr)
-                square([x - 2 * rr, y - 2 * rr]);
+  x = size[0];
+  y = size[1];
+  z = size[2];
+  rr = min(r, x / 2 - 0.05, y / 2 - 0.05);
+  linear_extrude(height=z)
+    translate([rr, rr])
+      offset(r=rr)
+        square([x - 2 * rr, y - 2 * rr]);
 }
