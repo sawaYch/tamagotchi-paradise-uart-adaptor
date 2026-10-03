@@ -1,5 +1,5 @@
 // Tamagotchi Paradise wireless UART adapter
-// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + open-top power tray.
+// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + magnetic power tray + cover.
 
 $fn = 64;
 eps = 0.05;
@@ -9,9 +9,9 @@ show_board_preview = false;
 show_pin_preview = false;
 show_magnet_preview = false;
 
-// 0 = adapter, 1 = lid, 2 = assembled
+// 0 = adapter, 1 = power tray, 2 = assembled, 3 = tray cover
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
-part = 1;
+part = 2;
 
 // --- JDY-23 BLE 5.0 module with base plate (32.7 x 18.3 mm) ---
 pcb_l = 32.7;
@@ -86,7 +86,7 @@ mag_inset = mag_pocket_d / 2 + mag_wall_skin;
 mag_boss_d = 2 * (mag_inset - 0.4);
 mag_boss_h = mag_pocket_h + mag_floor;
 
-// Female pogo housing in tray floor (ears at mid-height, insert from adapter side)
+// Female pogo housing in tray floor (ears seat on a ledge, insert from the lid cavity)
 fp_body_l = 12.5;
 fp_ear_l = 14.5;
 fp_w = 4.0;
@@ -131,11 +131,15 @@ sw_pw = sw_w + 0.3;
 
 tray_roof = 0.8;
 tray_floor = fp_h + tray_roof;
-tray_lip = 2.0;
+// Lip must clear corner magnet bosses above the MiniUPS
+tray_lip = mag_boss_h + 0.4;
 tray_gap_sw = 0.6;
 tray_inner_l = max(batt_bay_l, ups_pl) + 1.0;
 tray_cavity_h = batt_bay_h + ups_pt + tray_lip;
 tray_h = tray_floor + tray_cavity_h;
+cover_h = mag_pocket_h + mag_floor;
+cover_pry_w = 10.0;
+cover_pry_d = 1.2;
 pogo_wire_slot_w = 2.2;
 pogo_wire_slot_l = 6.0;
 
@@ -200,11 +204,16 @@ ledge_z = pin_floor_z + solder_well_h - ledge_h;
 
 if (part == 1) {
   lid();
+} else if (part == 3) {
+  tray_cover();
 } else {
   adapter();
-  if (part == 2)
+  if (part == 2) {
     color([0.25, 0.55, 0.85, 0.72])
       lid();
+    color([0.35, 0.65, 0.45, 0.72])
+      tray_cover();
+  }
 }
 
 module adapter() {
@@ -531,18 +540,18 @@ module isolator_ledges() {
     cube([shell_l - 2 * wall + 2 * overlap, ledge_w + overlap, ledge_h]);
 }
 
-function magnet_positions() =
+function magnet_positions(len = shell_l, wid = shell_w) =
   [
     [mag_inset, mag_inset],
-    [shell_l - mag_inset, mag_inset],
-    [mag_inset, shell_w - mag_inset],
-    [shell_l - mag_inset, shell_w - mag_inset],
+    [len - mag_inset, mag_inset],
+    [mag_inset, wid - mag_inset],
+    [len - mag_inset, wid - mag_inset],
   ];
 
-module magnet_corner_2d(extra = 0) {
-  for (p = magnet_positions()) {
-    cx = p[0] < shell_l / 2 ? -extra : shell_l + extra;
-    cy = p[1] < shell_w / 2 ? -extra : shell_w + extra;
+module magnet_corner_2d(len = shell_l, wid = shell_w, extra = 0) {
+  for (p = magnet_positions(len, wid)) {
+    cx = p[0] < len / 2 ? -extra : len + extra;
+    cy = p[1] < wid / 2 ? -extra : wid + extra;
     hull() {
       translate([p[0], p[1]])
         circle(d=mag_boss_d + 2 * extra);
@@ -559,12 +568,12 @@ module magnet_bosses_case() {
       rounded_cube([shell_l, shell_w, mag_boss_h], hook_r);
     translate([shell_ox, shell_oy, z0 - eps])
       linear_extrude(height=mag_boss_h + 2 * eps)
-        magnet_corner_2d();
+        magnet_corner_2d(shell_l, shell_w);
   }
 }
 
 module magnet_pockets_case() {
-  for (p = magnet_positions())
+  for (p = magnet_positions(shell_l, shell_w))
     translate(
       [
         shell_ox + p[0],
@@ -581,7 +590,7 @@ module magnet_disc() {
 }
 
 module magnet_preview_case() {
-  for (p = magnet_positions())
+  for (p = magnet_positions(shell_l, shell_w))
     translate(
       [
         shell_ox + p[0],
@@ -593,8 +602,20 @@ module magnet_preview_case() {
 }
 
 module magnet_preview_lid() {
-  for (p = magnet_positions())
+  for (p = magnet_positions(shell_l, shell_w))
     translate([mate_ox + p[0], mate_oy + p[1], 0.05])
+      magnet_disc();
+}
+
+module magnet_preview_tray() {
+  for (p = magnet_positions(tray_l, tray_w))
+    translate([p[0], p[1], tray_h - mag_h - 0.05])
+      magnet_disc();
+}
+
+module magnet_preview_cover() {
+  for (p = magnet_positions(tray_l, tray_w))
+    translate([p[0], p[1], 0.05])
       magnet_disc();
 }
 
@@ -614,19 +635,51 @@ module lid_for_print() {
 
 module lid_body() {
   difference() {
-    rounded_cube([tray_l, tray_w, tray_h], hook_r);
-    tray_cavity();
-    magnet_pockets_lid();
-    female_pogo_pocket();
-    switch_actuator_slot();
-    usbc_window();
+    union() {
+      difference() {
+        rounded_cube([tray_l, tray_w, tray_h], hook_r);
+        tray_cavity();
+        magnet_pockets_lid();
+        female_pogo_pocket();
+        switch_actuator_slot();
+        usbc_window();
+      }
+      // Add after cavity so corner bosses are not eaten by the cut
+      magnet_bosses_tray();
+    }
+    magnet_pockets_tray();
   }
-  if (show_magnet_preview)
+  if (show_magnet_preview) {
     magnet_preview_lid();
+    magnet_preview_tray();
+  }
   if (show_pin_preview)
     female_pogo_preview();
   if (show_board_preview)
     tray_component_preview();
+}
+
+module tray_cover() {
+  if (part == 3)
+    tray_cover_for_print();
+  else
+    translate([shell_ox - mate_ox, shell_oy - mate_oy, hook_h + shell_h + tray_h])
+      tray_cover_body();
+}
+
+module tray_cover_for_print() {
+  translate([0, tray_w, cover_h])
+    rotate([180, 0, 0])
+      tray_cover_body();
+}
+
+module tray_cover_body() {
+  difference() {
+    rounded_cube([tray_l, tray_w, cover_h], hook_r);
+    magnet_pockets_cover();
+  }
+  if (show_magnet_preview)
+    magnet_preview_cover();
 }
 
 function female_pogo_center() =
@@ -654,8 +707,31 @@ module tray_cavity() {
 }
 
 module magnet_pockets_lid() {
-  for (p = magnet_positions())
+  for (p = magnet_positions(shell_l, shell_w))
     translate([mate_ox + p[0], mate_oy + p[1], -eps])
+      cylinder(h=mag_pocket_h + eps, d=mag_pocket_d);
+}
+
+module magnet_bosses_tray() {
+  z0 = tray_h - mag_boss_h;
+  intersection() {
+    translate([0, 0, z0])
+      rounded_cube([tray_l, tray_w, mag_boss_h], hook_r);
+    translate([0, 0, z0 - eps])
+      linear_extrude(height=mag_boss_h + 2 * eps)
+        magnet_corner_2d(tray_l, tray_w);
+  }
+}
+
+module magnet_pockets_tray() {
+  for (p = magnet_positions(tray_l, tray_w))
+    translate([p[0], p[1], tray_h - mag_pocket_h])
+      cylinder(h=mag_pocket_h + 1, d=mag_pocket_d);
+}
+
+module magnet_pockets_cover() {
+  for (p = magnet_positions(tray_l, tray_w))
+    translate([p[0], p[1], -eps])
       cylinder(h=mag_pocket_h + eps, d=mag_pocket_d);
 }
 
@@ -664,15 +740,16 @@ module female_pogo_pocket() {
   bl = fp_body_l + 2 * fp_fit;
   el = fp_ear_l + 2 * fp_fit;
   w = fp_w + 2 * fp_fit;
-  ear_z2 = (fp_h + fp_ear_t) / 2;
+  ear_z = (fp_h - fp_ear_t) / 2;
 
-  // Blind pocket: opens toward the adapter only; tray_roof seals the cavity side
+  // Body opening on the adapter face. Ears rest on the ledge around it.
   translate([c[0], c[1], -eps])
-    linear_extrude(height=ear_z2 + eps)
-      female_pogo_2d(el, w);
-  translate([c[0], c[1], ear_z2 - eps])
-    linear_extrude(height=fp_h - ear_z2 + eps)
+    linear_extrude(height=ear_z + 2 * eps)
       female_pogo_2d(bl, w);
+  // Ear-width shaft from that ledge up through the floor into the lid cavity.
+  translate([c[0], c[1], ear_z])
+    linear_extrude(height=tray_floor - ear_z + eps)
+      female_pogo_2d(el, w);
 }
 
 module pogo_wire_slot() {

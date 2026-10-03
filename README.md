@@ -54,7 +54,7 @@ Generate both with `just all`.
 
 ## Models
 
-[Wired adapter](./models/wire/wire-adaptor.stl) · [Wired lid](./models/wire/wire-lid.stl) · [Wireless adapter](./models/wireless/wireless-adaptor.stl) · [Wireless lid](./models/wireless/wireless-lid.stl)
+[Wired adapter](./models/wire/wire-adaptor.stl) · [Wired lid](./models/wire/wire-lid.stl) · [Wireless adapter](./models/wireless/wireless-adaptor.stl) · [Wireless lid](./models/wireless/wireless-lid.stl) · [Wireless tray cover](./models/wireless/wireless-tray-cover.stl)
 
 ## Components
 
