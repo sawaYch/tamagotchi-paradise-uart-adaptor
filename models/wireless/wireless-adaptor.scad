@@ -50,6 +50,8 @@ pin_sleeve_z = 3.2;
 // --- Pocket / lid ---
 wall = 1.6;
 wall_inner = wall - 0.1;
+// JLC3DP: walls > 1.2 mm, and nothing thinner than 0.8 mm.
+min_wall = 1.4;
 headroom = 0.6;
 shell_extra = 2;
 
@@ -68,7 +70,7 @@ isolator_h = 1.0;
 solder_well_h = solder_h + wire_od;
 board_lift = solder_well_h + isolator_h;
 ledge_w = 1.8;
-ledge_h = 1.2;
+ledge_h = min_wall;
 
 // 5 x 2 mm N52 discs, one pair at each corner. 2 mm is thick enough to
 // hold this lid (~0.6 kg pull per magnet) without a deep pocket.
@@ -77,13 +79,10 @@ mag_h = 2.0;
 mag_fit = 0.3;
 mag_pocket_d = mag_d + mag_fit;
 mag_pocket_h = mag_h + 0.15;
-mag_floor = 0.7;
-mag_skin = 0.8;
-// Keep only a thin outer skin so pads sit in the corner/wall and
-// leave the cavity center open for soldering / chip install.
-mag_wall_skin = 1;
+mag_floor = min_wall;
+mag_wall_skin = min_wall;
 mag_inset = mag_pocket_d / 2 + mag_wall_skin;
-mag_boss_d = 2 * (mag_inset - 0.4);
+mag_boss_d = mag_pocket_d + 2 * min_wall;
 mag_boss_h = mag_pocket_h + mag_floor;
 
 // Female pogo housing in tray floor (ears seat on a ledge, insert from the lid cavity)
@@ -225,6 +224,7 @@ module adapter() {
           pcb_shell();
           pin_sleeves();
           prong_root_reinforcement();
+          hook_rib_fill();
           grab_cylinder();
         }
         pcb_cavity();
@@ -282,29 +282,40 @@ module ble_cutout() {
 }
 
 // Classic Bluetooth rune: vertical stem, right-pointing B bowls, left X arms.
-// Support bridges keep the two B-bowl islands attached for printing.
+// Close gaps narrower than min_wall so the window leaves no thin ribs.
 module bluetooth_symbol_2d(height, stroke) {
+  difference() {
+    offset(r=-min_wall / 2)
+      offset(r=min_wall / 2)
+        bluetooth_symbol_strokes(height, stroke);
+    bluetooth_symbol_bridges(height, stroke);
+  }
+}
+
+module bluetooth_symbol_strokes(height, stroke) {
   h = height;
   t = stroke;
   tip_x = h * 0.40;
   mid_y = h * 0.06;
-  support_w = max(0.9, t * 0.75);
-  support_len = t + h * 0.28;
-
-  difference() {
-    union() {
-      bluetooth_bar([0, h / 2], [0, -h / 2], t);
-      bluetooth_bar([0, h / 2], [tip_x, mid_y], t);
-      bluetooth_bar([tip_x, mid_y], [0, -mid_y], t);
-      bluetooth_bar([0, mid_y], [tip_x, -mid_y], t);
-      bluetooth_bar([tip_x, -mid_y], [0, -h / 2], t);
-      bluetooth_bar([-tip_x, h * 0.34], [0, 0], t);
-      bluetooth_bar([-tip_x, -h * 0.34], [0, 0], t);
-    }
-    // Leave solid bridges perpendicular to the outer hypotenuses
-    bluetooth_perp_support(0, h / 2, tip_x, mid_y, support_len, support_w);
-    bluetooth_perp_support(tip_x, -mid_y, 0, -h / 2, support_len, support_w);
+  union() {
+    bluetooth_bar([0, h / 2], [0, -h / 2], t);
+    bluetooth_bar([0, h / 2], [tip_x, mid_y], t);
+    bluetooth_bar([tip_x, mid_y], [0, -mid_y], t);
+    bluetooth_bar([0, mid_y], [tip_x, -mid_y], t);
+    bluetooth_bar([tip_x, -mid_y], [0, -h / 2], t);
+    bluetooth_bar([-tip_x, h * 0.34], [0, 0], t);
+    bluetooth_bar([-tip_x, -h * 0.34], [0, 0], t);
   }
+}
+
+module bluetooth_symbol_bridges(height, stroke) {
+  h = height;
+  t = stroke;
+  tip_x = h * 0.40;
+  mid_y = h * 0.06;
+  support_len = t + h * 0.28;
+  bluetooth_perp_support(0, h / 2, tip_x, mid_y, support_len, min_wall);
+  bluetooth_perp_support(tip_x, -mid_y, 0, -h / 2, support_len, min_wall);
 }
 
 module bluetooth_perp_support(ax, ay, bx, by, len, w) {
@@ -449,9 +460,9 @@ module board_preview() {
 }
 
 module prong_root_reinforcement() {
-  gusset_tip_w = 0.4;
-  gusset_root_h = 0.55;
-  gusset_tip_h = 0.3;
+  gusset_tip_w = min_wall;
+  gusset_root_h = min_wall;
+  gusset_tip_h = min_wall;
 
   hull() {
     translate(
@@ -502,6 +513,17 @@ module prong_root_reinforcement() {
     )
       cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
   }
+}
+
+// Basic_rev2 ribs are 1.79 mm above z=0.3 and only 1.0 mm below that step.
+module hook_rib_fill() {
+  y0 = -1.85;
+  yw = 3.7;
+  zh = 0.55;
+  translate([0.90, y0, 0])
+    cube([0.90, yw, zh]);
+  translate([10.20, y0, 0])
+    cube([0.90, yw, zh]);
 }
 
 module grab_cylinder() {
@@ -773,11 +795,13 @@ module switch_actuator_slot() {
 }
 
 module usbc_window() {
-  // After 180° placement, board USB-C (local min-X/min-Y) sits on +X / -Y
-  uy = ups_y + usbc_y_inset - usbc_w / 2;
+  // After 180° placement, board USB-C (local min-X/min-Y) sits on +X / -Y.
+  // Keep the cut on the flat wall so it does not shave the corner fillet.
+  y1 = ups_y + usbc_y_inset + usbc_w / 2;
+  y0 = max(ups_y + usbc_y_inset - usbc_w / 2, hook_r + 0.05);
   uz = tray_floor + batt_bay_h + usbc_z_inset - usbc_h / 2;
-  translate([tray_l - wall - eps, uy, uz])
-    cube([wall + 2 * eps, usbc_w, usbc_h]);
+  translate([tray_l - wall - eps, y0, uz])
+    cube([wall + 2 * eps, y1 - y0, usbc_h]);
 }
 
 module female_pogo_preview() {

@@ -52,6 +52,8 @@ pin_sleeve_z = 3.2;
 // --- Pocket / lid ---
 wall = 1.6;
 wall_inner = wall - 0.1;
+// JLC3DP: walls > 1.2 mm, and nothing thinner than 0.8 mm.
+min_wall = 1.4;
 headroom = 0.6;
 shell_extra = 2;
 
@@ -62,21 +64,21 @@ isolator_h = 1.0;
 solder_well_h = solder_h + wire_od;
 board_lift = solder_well_h + isolator_h;
 ledge_w = 1.8;
-ledge_h = 1.2;
+ledge_h = min_wall;
 
 usb_cut_tol = 0.6;
 usb_cut_round_r = 2.5;
 
-lid_t = 1.6;
+lid_pry_w = 10.0;
+lid_pry_d = 1.2;
+lid_t = min_wall + lid_pry_d;
 lid_inner_clear = 0.03;
 lid_inner_h = 3.0;
-lid_inner_t = 1.2;
+lid_inner_t = min_wall;
 lid_snap_d = 0.5;
 lid_snap_h = 1.6;
 lid_snap_w = 14.0;
 lid_snap_lift = 0.7;
-lid_pry_w = 10.0;
-lid_pry_d = 1.2;
 
 // --- Hook reinforcement (imported Basic_rev2.stl) ---
 prong_root_y = -2.5;
@@ -140,6 +142,7 @@ module adapter() {
                 pcb_shell();
                 pin_sleeves();
                 prong_root_reinforcement();
+                hook_rib_fill();
                 grab_cylinder();
             }
             pcb_cavity();
@@ -352,9 +355,9 @@ module usb_c_capsule(l, w, h) {
 }
 
 module prong_root_reinforcement() {
-    gusset_tip_w = 0.4;
-    gusset_root_h = 0.55;
-    gusset_tip_h = 0.3;
+    gusset_tip_w = min_wall;
+    gusset_root_h = min_wall;
+    gusset_tip_h = min_wall;
 
     hull() {
         translate([
@@ -393,6 +396,17 @@ module prong_root_reinforcement() {
         ])
             cube([gusset_tip_w, prong_root_w, gusset_tip_h]);
     }
+}
+
+// Basic_rev2 ribs are 1.79 mm above z=0.3 and only 1.0 mm below that step.
+module hook_rib_fill() {
+    y0 = -1.85;
+    yw = 3.7;
+    zh = 0.55;
+    translate([0.90, y0, 0])
+        cube([0.90, yw, zh]);
+    translate([10.20, y0, 0])
+        cube([0.90, yw, zh]);
 }
 
 module grab_cylinder() {
