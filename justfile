@@ -10,10 +10,10 @@ wireless_scad := "models/wireless/wireless-adaptor.scad"
 check:
     openscad --version
 
-# Generate the existing wired adapter and lid
+# Generate the wired adapter and magnetic lid
 wire:
-    openscad -D part=0 -D show_board_preview=false -D show_pin_preview=false -o models/wire/wire-adaptor.stl {{wire_scad}}
-    openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -o models/wire/wire-lid.stl {{wire_scad}}
+    openscad -D part=0 -D show_board_preview=false -D show_pin_preview=false -D show_magnet_preview=false -o models/wire/wire-adaptor.stl {{wire_scad}}
+    openscad -D part=1 -D show_board_preview=false -D show_pin_preview=false -D show_magnet_preview=false -o models/wire/wire-lid.stl {{wire_scad}}
 
 # Generate the wireless adapter, magnetic tray, and tray cover
 wireless:
