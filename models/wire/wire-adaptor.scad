@@ -86,6 +86,20 @@ lid_h = mag_pocket_h + mag_floor;
 lid_pry_w = 10.0;
 lid_pry_d = 1.2;
 
+// Kuchipatchi outline, centered on the plain long wall.
+kuchipatchi_margin_z = 1.2;
+kuchipatchi_margin_x = 2.4;
+kuchipatchi_depth = 0.4;
+kuchipatchi_art_h = 34.75;
+kuchipatchi_art_w = 32.22;
+
+// Paradise wordmark, centered on the opposite long wall.
+paradise_margin_x = 2.4;
+paradise_margin_z = 1.2;
+paradise_depth = 0.4;
+paradise_art_w = 36.70;
+paradise_art_h = 14.54;
+
 // --- Hook reinforcement (imported Basic_rev2.stl) ---
 prong_root_y = -2.5;
 prong_root_w = 5.0;
@@ -161,6 +175,8 @@ module adapter() {
       magnet_bosses_case();
     }
     magnet_pockets_case();
+    kuchipatchi_engrave();
+    paradise_engrave();
   }
   if (show_board_preview)
     board_preview();
@@ -172,6 +188,32 @@ module adapter() {
 
 module hook() {
   import(stl_file, convexity=16);
+}
+
+module kuchipatchi_engrave() {
+  s = min(
+    (shell_h - 2 * kuchipatchi_margin_z) / kuchipatchi_art_h,
+    (shell_l - 2 * kuchipatchi_margin_x) / kuchipatchi_art_w
+  );
+  translate([shell_ox + shell_l / 2, shell_oy - eps, hook_h + shell_h / 2])
+    rotate([-90, 0, 0])
+      linear_extrude(height=kuchipatchi_depth + eps, convexity=16)
+        scale(s)
+          mirror([0, 1])
+            import("../wireless/kuchipatchi.svg", center=true, convexity=16);
+}
+
+module paradise_engrave() {
+  s = min(
+    (shell_l - 2 * paradise_margin_x) / paradise_art_w,
+    (shell_h - 2 * paradise_margin_z) / paradise_art_h
+  );
+  translate([shell_ox + shell_l / 2, shell_oy + shell_w + eps, hook_h + shell_h / 2])
+    rotate([90, 0, 0])
+      linear_extrude(height=paradise_depth + eps, convexity=12)
+        scale(s)
+          mirror([1, 0])
+            import("../wireless/paradise-logo.svg", center=true, convexity=12);
 }
 
 module pcb_shell() {

@@ -149,6 +149,18 @@ cover_pry_d = 1.2;
 pogo_wire_slot_w = 2.2;
 pogo_wire_slot_l = 6.0;
 
+// Kuchipatchi outline on the plain long wall, opposite the slide switch.
+kuchipatchi_margin_z = 2.6;
+kuchipatchi_depth = 0.4;
+// Height of kuchipatchi.svg as imported, in mm.
+kuchipatchi_art_h = 34.75;
+
+// Paradise wordmark on the switch side, centered on that wall.
+paradise_margin_x = 2.8;
+paradise_depth = 0.4;
+// Width of paradise-logo.svg as imported, in mm.
+paradise_art_w = 36.70;
+
 // --- Hook reinforcement (imported Basic_rev2.stl) ---
 prong_root_y = -2.5;
 prong_root_w = 5.0;
@@ -681,6 +693,8 @@ module lid_body() {
       magnet_bosses_tray();
     }
     magnet_pockets_tray();
+    kuchipatchi_engrave();
+    paradise_engrave();
   }
   if (show_magnet_preview) {
     magnet_preview_lid();
@@ -725,6 +739,26 @@ module female_pogo_2d(len, wid) {
     translate([-dx, 0]) circle(d=wid);
     translate([dx, 0]) circle(d=wid);
   }
+}
+
+module paradise_engrave() {
+  s = (tray_l - 2 * paradise_margin_x) / paradise_art_w;
+  translate([tray_l / 2, tray_w + eps, tray_h / 2])
+    rotate([90, 0, 0])
+      linear_extrude(height=paradise_depth + eps, convexity=12)
+        scale(s)
+          mirror([1, 0])
+            import("paradise-logo.svg", center=true, convexity=12);
+}
+
+module kuchipatchi_engrave() {
+  s = (tray_h - 2 * kuchipatchi_margin_z) / kuchipatchi_art_h;
+  translate([tray_l / 2, -eps, tray_h / 2])
+    rotate([-90, 0, 0])
+      linear_extrude(height=kuchipatchi_depth + eps, convexity=16)
+        scale(s)
+          mirror([0, 1])
+            import("kuchipatchi.svg", center=true, convexity=16);
 }
 
 module tray_cavity() {
