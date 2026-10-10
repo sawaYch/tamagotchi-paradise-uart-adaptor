@@ -59,7 +59,7 @@ shell_extra = 2;
 pin_solder_clear = 6.0; // along X, ahead of the header (toward pogo pins)
 side_wire_clear = 1.5; // each Y side beyond fit tolerance
 
-// Bluetooth-symbol RF window at the antenna (+X) end
+// Bluetooth-symbol windows on both end walls
 ble_symbol_h = 9.0;
 ble_symbol_stroke = 1.35;
 
@@ -110,11 +110,18 @@ sw_body_h = 6.5;
 sw_act_travel = 2.2;
 sw_act_l = 11.5;
 sw_act_h = 4.2;
-// USB-C window (MiniUPS bottom-left corner, after 180° place on +X / -Y)
-usbc_w = 9.5;
-usbc_h = 3.6;
-usbc_y_inset = 4.8;
-usbc_z_inset = 2.8;
+// Vertical USB-C opening on the +X end wall (plug long axis along Z).
+// Insets are from the outer case to the opening edges.
+usbc_w = 3.6;
+usbc_h = 9.5;
+usbc_side_inset = 3.5;
+usbc_top_inset = 16.0;
+// Status-LED grille just above that opening
+led_hole_d = 1.5;
+led_hole_pitch = 2.5;
+led_hole_cols = 5;
+led_hole_rows = 3;
+led_hole_gap = 1.6;
 
 comp_fit = 0.4;
 // Battery stands on its thin face so tray width can match the adapter:
@@ -269,15 +276,18 @@ module pcb_cavity() {
 }
 
 module ble_cutout() {
-  depth = wall + 6;
-  // Antenna keep-out sits at the free (+X) end of the board
-  x0 = shell_ox + shell_l + 0.2;
   z0 = pcb_z + pcb_thickness + module_h / 2;
+  // Free (+X) end, through the antenna wall
+  ble_symbol_window(shell_ox + shell_l + 0.2, z0, -90, 90, wall + 6);
+  // Hook (-X) end. Shorter depth so the cut stops clear of the pogo sleeves.
+  ble_symbol_window(shell_ox - 0.2, z0, 90, 270, wall + 2);
+}
 
+module ble_symbol_window(x0, z0, tilt, spin, depth) {
   translate([x0, 0, z0])
-    rotate([0, -90, 0])
+    rotate([0, tilt, 0])
       linear_extrude(height=depth)
-        rotate([0, 0, 90])
+        rotate([0, 0, spin])
           bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
 }
 
@@ -665,6 +675,7 @@ module lid_body() {
         female_pogo_pocket();
         switch_actuator_slot();
         usbc_window();
+        ups_led_window();
       }
       // Add after cavity so corner bosses are not eaten by the cut
       magnet_bosses_tray();
@@ -795,13 +806,37 @@ module switch_actuator_slot() {
 }
 
 module usbc_window() {
-  // After 180° placement, board USB-C (local min-X/min-Y) sits on +X / -Y.
-  // Keep the cut on the flat wall so it does not shave the corner fillet.
-  y1 = ups_y + usbc_y_inset + usbc_w / 2;
-  y0 = max(ups_y + usbc_y_inset - usbc_w / 2, hook_r + 0.05);
-  uz = tray_floor + batt_bay_h + usbc_z_inset - usbc_h / 2;
-  translate([tray_l - wall - eps, y0, uz])
-    cube([wall + 2 * eps, y1 - y0, usbc_h]);
+  // Capsule on the flat +X wall: 3.5 mm from the -Y side, 16 mm from the top.
+  y_c = usbc_side_inset + usbc_w / 2;
+  z_top = tray_h - usbc_top_inset;
+  rad = usbc_w / 2;
+  z_hi = z_top - rad;
+  z_lo = z_top - usbc_h + rad;
+  translate([tray_l - wall - eps, y_c, 0])
+    hull() {
+      translate([0, 0, z_lo])
+        rotate([0, 90, 0])
+          cylinder(h=wall + 2 * eps, r=rad);
+      translate([0, 0, z_hi])
+        rotate([0, 90, 0])
+          cylinder(h=wall + 2 * eps, r=rad);
+    }
+}
+
+module ups_led_window() {
+  z0 = tray_h - usbc_top_inset + led_hole_gap + led_hole_d / 2;
+  // Start over the USB-C opening and run inward, clear of the corner fillet.
+  y_left = usbc_side_inset + led_hole_d / 2;
+  for (c = [0:led_hole_cols - 1], r = [0:led_hole_rows - 1])
+    translate(
+      [
+        tray_l - wall - eps,
+        y_left + c * led_hole_pitch,
+        z0 + r * led_hole_pitch,
+      ]
+    )
+      rotate([0, 90, 0])
+        cylinder(h=wall + 2 * eps, d=led_hole_d);
 }
 
 module female_pogo_preview() {
@@ -829,16 +864,16 @@ module tray_component_preview() {
       rotate([0, 0, 180])
         cube([ups_l, ups_w, ups_t]);
 
-  // USB-C shell hint on the free end
+  // USB-C shell hint, vertical, behind the end-wall opening
   color([0.75, 0.75, 0.78, 0.95])
     translate(
       [
-        tray_l - wall - 1.0,
-        ups_y + usbc_y_inset - 4.4,
-        tray_floor + batt_bay_h + usbc_z_inset - 1.5,
+        tray_l - wall - 7.0,
+        usbc_side_inset + (usbc_w - 3.0) / 2,
+        tray_h - usbc_top_inset - usbc_h + (usbc_h - 8.8) / 2,
       ]
     )
-      cube([7.0, 8.8, 3.0]);
+      cube([7.0, 3.0, 8.8]);
 
   // SS-12D10-G5 body + actuator stub
   color([0.10, 0.10, 0.10, 0.92]) {
