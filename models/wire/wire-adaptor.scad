@@ -94,14 +94,14 @@ prong_root_extra = 1.25;
 prong_root_overlap = 0.25;
 
 // Detent faces that clip the Tamagotchi's grab bar (measured from STL)
-prong_grab_shave = 0.1;
+prong_grab_shave = 0;
 prong_grab_face_l = -7.112;
 prong_grab_face_r = -4.888;
 prong_grab_z = -2.49;
 
 grab_cyl_x = 6.0;
 grab_cyl_z = -0.20;
-grab_cyl_d = 2.64; // original = ~2.4mm
+grab_cyl_d = 2.7; // original = ~2.4mm
 grab_cyl_len = 5.7;
 
 // --- Derived ---
