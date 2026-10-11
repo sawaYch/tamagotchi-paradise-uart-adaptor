@@ -289,18 +289,23 @@ module pcb_cavity() {
 
 module ble_cutout() {
   z0 = pcb_z + pcb_thickness + module_h / 2;
-  // Free (+X) end, through the antenna wall
-  ble_symbol_window(shell_ox + shell_l + 0.2, z0, -90, 90, wall + 6);
+  // Both runes stand upright and point the B toward +Y.
+  // Free (+X) end, through the antenna wall. Mirrored so it matches the other end.
+  ble_symbol_window(shell_ox + shell_l + 0.2, z0, -90, 90, wall + 6, true);
   // Hook (-X) end. Shorter depth so the cut stops clear of the pogo sleeves.
-  ble_symbol_window(shell_ox - 0.2, z0, 90, 270, wall + 2);
+  ble_symbol_window(shell_ox - 0.2, z0, 90, 90, wall + 2, false);
 }
 
-module ble_symbol_window(x0, z0, tilt, spin, depth) {
+module ble_symbol_window(x0, z0, tilt, spin, depth, flip=false) {
   translate([x0, 0, z0])
     rotate([0, tilt, 0])
       linear_extrude(height=depth)
         rotate([0, 0, spin])
-          bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
+          if (flip)
+            mirror([0, 1])
+              bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
+          else
+            bluetooth_symbol_2d(ble_symbol_h, ble_symbol_stroke);
 }
 
 // Classic Bluetooth rune: vertical stem, right-pointing B bowls, left X arms.
