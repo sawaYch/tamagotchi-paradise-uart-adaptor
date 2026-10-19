@@ -59,7 +59,7 @@ shell_extra = 2;
 pin_solder_clear = 6.0; // along X, ahead of the header (toward pogo pins)
 side_wire_clear = 1.5; // each Y side beyond fit tolerance
 
-// Bluetooth-symbol windows on both end walls
+// Bluetooth-symbol window on the free (+X) end wall
 ble_symbol_h = 9.0;
 ble_symbol_stroke = 1.35;
 
@@ -248,6 +248,7 @@ module adapter() {
         }
         pcb_cavity();
         ble_cutout();
+        mode_switch_slot();
         pin_through_holes();
         prong_grab_relief();
       }
@@ -289,11 +290,17 @@ module pcb_cavity() {
 
 module ble_cutout() {
   z0 = pcb_z + pcb_thickness + module_h / 2;
-  // Both runes stand upright and point the B toward +Y.
-  // Free (+X) end, through the antenna wall. Mirrored so it matches the other end.
+  // Upright rune through the antenna wall, B pointing toward +Y.
   ble_symbol_window(shell_ox + shell_l + 0.2, z0, -90, 90, wall + 6, true);
-  // Hook (-X) end. Shorter depth so the cut stops clear of the pogo sleeves.
-  ble_symbol_window(shell_ox - 0.2, z0, 90, 90, wall + 2, false);
+}
+
+// BLE/SPP mode SS-12D10 on the hook (-X) end wall. Body rests just above
+// the PCB in the solder pocket; actuator slot matches the lid power switch.
+module mode_switch_slot() {
+  slot_w = sw_act_l + sw_act_travel;
+  zc = pcb_z + pcb_thickness + tolerance + sw_body_h / 2;
+  translate([shell_ox - eps, -slot_w / 2, zc - sw_act_h / 2])
+    cube([wall + 2 * eps, slot_w, sw_act_h]);
 }
 
 module ble_symbol_window(x0, z0, tilt, spin, depth, flip=false) {
