@@ -58,20 +58,13 @@ Generate both with `just all`.
 
 ## Components
 
-### 1. FTL232RL USB to ttl module (USB Type-C)
+### 1. CH340NC USB to ttl module (USB Type-C)
 
-<div style="display: flex; gap: 0px;">
-<img src="./docs/ftl232rl-module.png"
-         alt="ftl232rl-module"
-         height="280px"
-         width="auto">  
-<img src="./docs/ft232rl-preivew.jpg"
-         alt="ftl232rl-preview"
-         height="280px"
-         width="auto">   
-</div>
+__20 Oct 2026 updated: not suggest to use FT232RL since it does not works on Android usb OTG for BBSite https://tools.bbamorachi.us/ so I change to pick CH340NC, just to ensure your chip size <= 36mm*18mm__
 
-[Example Retail](https://item.taobao.com/item.htm?from=detail&id=977654905255&mi_id=0000h-JgSDiB4f7Ho-2niVD6hPhUYCVJkwAm0X3ns97yCBI&spm=tbpc.orderdetail.suborder_itemtitle.1.1ac16aa62cI0VB)
+
+
+[Example Retail](https://item.taobao.com/item.htm?id=723291896174&mi_id=0000MJbljyDEBiNyD6P78k6poDKJKHLuKTCl5kBvPAY2M7g&spm=tbpc.boughtlist.suborder_itemtitle.1.57bf2e8d0Qbym5)
 
 🚨🚨🚨 **Tamagotchi Paradise only accept 3.3v for signal, please check your usb to ttl TX is output 3.3v otherwise it can damage your Tamagotchi Paradise device!!!** 🚨🚨🚨
 
