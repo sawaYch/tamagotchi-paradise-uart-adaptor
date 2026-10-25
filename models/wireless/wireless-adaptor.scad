@@ -1,5 +1,5 @@
 // Tamagotchi Paradise wireless UART adapter
-// Hook (Basic_rev2.stl) + JDY-23 BLE pocket + magnetic power tray + cover.
+// Hook (Basic_rev2.stl) + ESP32-WROOM-32E PCB + magnetic power tray + cover.
 
 $fn = 64;
 eps = 0.05;
@@ -13,17 +13,18 @@ show_magnet_preview = false;
 // Use a number so `openscad -D part=0` works on Windows (no quoted strings).
 part = 2;
 
-// --- JDY-23 BLE 5.0 module with base plate (32.7 x 18.3 mm) ---
-pcb_l = 32.7;
-pcb_w = 18.3;
+// --- tama_bridge ESP32-WROOM-32E (20 x 31.35 mm FR4, antenna overhang 6.25) ---
+pcb_l = 31.35;
+pcb_w = 20.0;
 pcb_thickness = 1.6;
-// SMT module stack on the carrier (~19.6 x 14.94 x 1.8) plus pin header clearance
-module_l = 19.6;
-module_w = 14.94;
-module_h = 1.8;
-header_h = 8.5;
-pcb_h = pcb_thickness + header_h;
-pad_pitch_y = 2.54;
+ant_keepout = 6.25;
+module_l = 25.5;
+module_w = 18.0;
+module_h = 3.2;
+pcb_h = pcb_thickness + module_h;
+btn_l = 3.9;
+btn_w = 3.0;
+btn_h = 2.5;
 board_preview_angle = 0;
 pcb_insert_x_offset = 0;
 pcb_insert_y_offset = 0;
@@ -55,11 +56,7 @@ min_wall = 1.4;
 headroom = 0.6;
 shell_extra = 2;
 
-// Extra pocket around the JDY-23 pin header for soldering TX/RX/GND/VCC wires
-pin_solder_clear = 6.0; // along X, ahead of the header (toward pogo pins)
-side_wire_clear = 1.5; // each Y side beyond fit tolerance
-
-// Bluetooth-symbol window on the free (+X) end wall
+// Bluetooth-symbol window on the free (+X) antenna wall
 ble_symbol_h = 9.0;
 ble_symbol_stroke = 1.35;
 
@@ -72,8 +69,8 @@ board_lift = solder_well_h + isolator_h;
 ledge_w = 1.8;
 ledge_h = min_wall;
 
-// 5 x 2 mm N52 discs, one pair at each corner. 2 mm is thick enough to
-// hold this lid (~0.6 kg pull per magnet) without a deep pocket.
+// 5 x 2 mm N52 discs at the four top corners. PCB slides in from the
+// antenna wall under these, so the outer box stays a clean rectangle.
 mag_d = 5.0;
 mag_h = 2.0;
 mag_fit = 0.3;
@@ -137,7 +134,7 @@ sw_pw = sw_w + 0.3;
 
 tray_roof = 0.8;
 tray_floor = fp_h + tray_roof;
-// Lip must clear corner magnet bosses above the MiniUPS
+// Air above MiniUPS; keeps the USB-C / LED windows on the +X wall
 tray_lip = mag_boss_h + 0.4;
 tray_gap_sw = 0.6;
 tray_inner_l = max(batt_bay_l, ups_pl) + 1.0;
@@ -180,9 +177,9 @@ grab_cyl_d = 2.64; // original = ~2.4mm
 grab_cyl_len = 5.7;
 
 // --- Derived ---
-pcb_cav_l = pcb_l + 2 * tolerance + pin_solder_clear;
-pcb_cav_w = pcb_w + 2 * tolerance + 2 * side_wire_clear;
-pcb_cav_h = pcb_h + tolerance + headroom;
+pcb_cav_l = pcb_l + ant_keepout + 2 * tolerance;
+pcb_cav_w = max(pcb_w + 2 * tolerance, ups_pw);
+pcb_cav_h = max(pcb_h, pcb_thickness + sw_body_h) + tolerance + headroom;
 shell_h = wall + board_lift + pcb_cav_h + shell_extra;
 
 hook_x0 = -hook_l / 2;
@@ -209,8 +206,8 @@ ups_y = (tray_w - ups_pw) / 2;
 sw_x = wall + (tray_l - 2 * wall - sw_pl) / 2;
 sw_y = wall + batt_bay_w + tray_gap_sw;
 
-// Board sits past the solder pocket so the pin header is not against the wall
-board_x0 = hook_x0 + wall + pin_solder_clear;
+// Pad edge toward the hook / pogo pins; antenna toward the free (+X) wall
+board_x0 = hook_x0 + wall + tolerance;
 board_y0 = -pcb_w / 2;
 
 pin_barrel_hole = pin_barrel_d + 2 * pin_hole_clear;
@@ -247,7 +244,8 @@ module adapter() {
           grab_cylinder();
         }
         pcb_cavity();
-        ble_cutout();
+        pcb_insert_slot();
+        ble_engrave();
         mode_switch_slot();
         pin_through_holes();
         prong_grab_relief();
@@ -288,19 +286,41 @@ module pcb_cavity() {
     );
 }
 
-module ble_cutout() {
-  z0 = pcb_z + pcb_thickness + module_h / 2;
-  // Upright rune through the antenna wall, B pointing toward +Y.
-  ble_symbol_window(shell_ox + shell_l + 0.2, z0, -90, 90, wall + 6, true);
+module pcb_insert_slot() {
+  slot_w = pcb_w + 2 * tolerance + 0.4;
+  slot_h = pcb_h + 2 * tolerance + 0.8;
+  slot_z = pcb_z - 0.25;
+  r = min(1.2, slot_h / 2 - 0.15, slot_w / 2 - 0.15);
+  translate([shell_ox + shell_l - wall - 1, 0, slot_z + slot_h / 2])
+    rotate([0, 90, 0])
+      linear_extrude(height=wall + 2)
+        offset(r=r)
+          square([slot_h - 2 * r, slot_w - 2 * r], center=true);
+}
+
+module ble_engrave() {
+  h = 4.0;
+  z0 = hook_h + shell_h - 2.6;
+  translate([shell_ox + shell_l + eps, 0, z0])
+    rotate([0, -90, 0])
+      linear_extrude(height=0.4 + eps)
+        rotate([0, 0, 90])
+          mirror([0, 1])
+            bluetooth_symbol_strokes(h, 0.65);
 }
 
 // BLE/SPP mode SS-12D10 on the hook (-X) end wall. Body rests just above
-// the PCB in the solder pocket; actuator slot matches the lid power switch.
+// the pad edge of the PCB; actuator slot matches the lid power switch.
 module mode_switch_slot() {
   slot_w = sw_act_l + sw_act_travel;
+  slot_h = sw_act_h;
+  r = min(1.0, slot_w / 2 - 0.2, slot_h / 2 - 0.2);
   zc = pcb_z + pcb_thickness + tolerance + sw_body_h / 2;
-  translate([shell_ox - eps, -slot_w / 2, zc - sw_act_h / 2])
-    cube([wall + 2 * eps, slot_w, sw_act_h]);
+  translate([shell_ox - 0.2, 0, zc])
+    rotate([0, 90, 0])
+      linear_extrude(height=wall + 2)
+        offset(r=r)
+          square([slot_h - 2 * r, slot_w - 2 * r], center=true);
 }
 
 module ble_symbol_window(x0, z0, tilt, spin, depth, flip=false) {
@@ -411,85 +431,57 @@ module pogo_pin() {
 }
 
 module board_preview() {
-  // Antenna / module toward +X (free end); 6-pin header toward -X (near pogo pins)
-  header_x = board_x0 + 1.2;
-  header_body_w = 5 * pad_pitch_y + 2.2;
-  header_body_l = 2.5;
-  header_body_h = 2.5;
-  module_x = board_x0 + pcb_l - module_l - 1.2;
-  module_y = -module_w / 2;
+  // KiCad: pads at y=37.6, antenna keepout y=0..6.25. Mapped so +X is antenna.
+  kicad_y1 = pcb_l + ant_keepout;
+  kicad_mod_x = 10.0;
+  kicad_mod_y0 = 0.31;
+  kicad_sw_y = 28.25;
+  kicad_led_x = 11.35;
+  kicad_led_y = 31.05;
+  pad_y = 36.15;
+  pad_xs = [1.7, 3.55, 5.4, 7.45, 9.3, 11.15, 13.15, 15.0, 16.95, 18.8];
   led_d = 1.6;
+  mod_x = board_x0 + (kicad_y1 - (kicad_mod_y0 + module_l));
+  ant_x = board_x0 + (kicad_y1 - (kicad_mod_y0 + ant_keepout));
+  shield_x = board_x0 + (kicad_y1 - (kicad_mod_y0 + 6.2));
+  led_x = board_x0 + (kicad_y1 - kicad_led_y);
+  sw_x = board_x0 + (kicad_y1 - kicad_sw_y);
+  pads_x = board_x0 + (kicad_y1 - pad_y);
 
   translate([pcb_insert_x_offset, pcb_insert_y_offset, pcb_z])
     rotate([0, 0, board_preview_angle])
       union() {
-        // Carrier PCB
         color([0.12, 0.42, 0.22, 0.90])
           translate([board_x0, board_y0, 0])
             cube([pcb_l, pcb_w, pcb_thickness]);
 
-        // Antenna keep-out silkscreen near free end
-        color([0.92, 0.92, 0.88, 0.55])
-          translate([board_x0 + pcb_l - 6.5, board_y0 + 1.0, pcb_thickness])
-            cube([5.0, pcb_w - 2.0, 0.05]);
-
-        // JDY-23 SMT module
         color([0.10, 0.10, 0.10, 0.96])
-          translate([module_x, module_y, pcb_thickness])
+          translate([mod_x, board_y0 + kicad_mod_x - module_w / 2, pcb_thickness])
             cube([module_l, module_w, module_h]);
 
-        // Shield window / RF marking
+        color([0.92, 0.92, 0.88, 0.50])
+          translate([ant_x, board_y0 + 1.0, pcb_thickness + module_h])
+            cube([ant_keepout - 0.3, pcb_w - 2.0, 0.05]);
+
         color([0.55, 0.55, 0.58, 0.90])
-          translate(
-            [
-              module_x + module_l - 5.2,
-              -3.0,
-              pcb_thickness + module_h,
-            ]
-          )
-            cube([3.8, 6.0, 0.08]);
+          translate([shield_x, -3.0, pcb_thickness + module_h])
+            cube([4.0, 6.0, 0.08]);
 
-        // Status LED
         color([0.15, 0.85, 0.30, 0.95])
-          translate(
-            [
-              header_x + header_body_l + 2.0,
-              pcb_w / 2 - 2.2,
-              pcb_thickness,
-            ]
-          )
-            cylinder(h=0.7, d=led_d);
+          translate([led_x, board_y0 + kicad_led_x, pcb_thickness])
+            cylinder(h=0.6, d=led_d);
 
-        // 6-pin 2.54 mm header (STATE, RXD, TXD, GND, VCC, EN)
-        color([0.12, 0.12, 0.12, 0.96])
-          translate(
-            [
-              header_x,
-              -header_body_w / 2,
-              pcb_thickness,
-            ]
-          )
-            cube([header_body_l, header_body_w, header_body_h]);
-
-        for (p = [0:5]) {
-          py = (2.5 - p) * pad_pitch_y;
-          pin_col =
-            p == 1 ? [0.35, 0.72, 0.95, 0.95]
-            : p == 2 ? [0.25, 0.85, 0.40, 0.95]
-            : p == 3 ? [0.55, 0.32, 0.16, 0.95]
-            : p == 4 ? [0.90, 0.20, 0.18, 0.95]
-            : [0.82, 0.68, 0.18, 0.92];
-
-          translate(
-            [
-              header_x + header_body_l / 2,
-              py,
-              pcb_thickness + header_body_h,
-            ]
-          )
-            color(pin_col)
-              cylinder(h=header_h - header_body_h, d=0.64);
+        color([0.25, 0.25, 0.28, 0.95]) {
+          translate([sw_x - btn_w / 2, board_y0 + 5.2 - btn_l / 2, pcb_thickness])
+            cube([btn_w, btn_l, btn_h]);
+          translate([sw_x - btn_w / 2, board_y0 + 14.8 - btn_l / 2, pcb_thickness])
+            cube([btn_w, btn_l, btn_h]);
         }
+
+        for (px = pad_xs)
+          translate([pads_x, board_y0 + px, -0.05])
+            color([0.82, 0.68, 0.18, 0.95])
+              cylinder(h=pcb_thickness + 0.15, d=1.4);
       }
 }
 
@@ -628,6 +620,17 @@ module magnet_bosses_case() {
   }
 }
 
+module magnet_bosses_tray() {
+  z0 = tray_h - mag_boss_h;
+  intersection() {
+    translate([0, 0, z0])
+      rounded_cube([tray_l, tray_w, mag_boss_h], hook_r);
+    translate([0, 0, z0 - eps])
+      linear_extrude(height=mag_boss_h + 2 * eps)
+        magnet_corner_2d(tray_l, tray_w);
+  }
+}
+
 module magnet_pockets_case() {
   for (p = magnet_positions(shell_l, shell_w))
     translate(
@@ -701,7 +704,6 @@ module lid_body() {
         usbc_window();
         ups_led_window();
       }
-      // Add after cavity so corner bosses are not eaten by the cut
       magnet_bosses_tray();
     }
     magnet_pockets_tray();
@@ -789,17 +791,6 @@ module magnet_pockets_lid() {
   for (p = magnet_positions(shell_l, shell_w))
     translate([mate_ox + p[0], mate_oy + p[1], -eps])
       cylinder(h=mag_pocket_h + eps, d=mag_pocket_d);
-}
-
-module magnet_bosses_tray() {
-  z0 = tray_h - mag_boss_h;
-  intersection() {
-    translate([0, 0, z0])
-      rounded_cube([tray_l, tray_w, mag_boss_h], hook_r);
-    translate([0, 0, z0 - eps])
-      linear_extrude(height=mag_boss_h + 2 * eps)
-        magnet_corner_2d(tray_l, tray_w);
-  }
 }
 
 module magnet_pockets_tray() {
